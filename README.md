@@ -22,12 +22,10 @@ Codes are seperated based on the analysis:
 * R
 
 ### Executing program
-First, raw data used to generate the manuscript should be downloaded after obtaining proper acess through:  <br />
-[Dr. Sahib S. Khalsa](skhalsa@laureateinstitute.org)  <br />
-Each script was named based on the associated figure and stats used in the manuscript. 
+After downloading the data, each script can be used to generate the correspoding analysis:
 
 ```
-Run Figure4.Rmd in RStudio
+Figure4.Rmd # in RStudio
 ```
 
 ## Maintainer
