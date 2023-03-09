@@ -26,7 +26,7 @@ Run Figure4.Rmd in RStudio
 ```
 
 ## Maintainer
-For any questions regarding codes in this repo, please contact <br\>
+For any questions regarding codes in this repo, please contact <br />
 [Obada Al Zoubi](obada.y.alzoubi@gmail.com)
 
 
