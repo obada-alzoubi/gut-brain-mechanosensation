@@ -25,7 +25,9 @@ Each script was named based on the associated figure and stats used in the manus
 Run Figure4.Rmd in RStudio
 ```
 
-## Authors
+## Maintainer
+For any questions regarding codes in this repo, please contact <br\>
+[Obada Al Zoubi](obada.y.alzoubi@gmail.com)
 
 
 Name
