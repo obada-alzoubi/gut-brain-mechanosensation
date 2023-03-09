@@ -18,7 +18,8 @@ This repo contains codes and script used  to analyze data from  minimally invasi
 * R
 
 ### Executing program
-First, raw data used to generate the manuscript should be downloaded after obtaining proper acess through [Dr. Sahib S. Khalsa] (skhalsa@laureateinstitute.org). <br />
+First, raw data used to generate the manuscript should be downloaded after obtaining proper acess through:  <br />
+[Dr. Sahib S. Khalsa](skhalsa@laureateinstitute.org).
 Each script was named based on the associated figure and stats used in the manuscript. 
 
 ```
