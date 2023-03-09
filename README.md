@@ -10,7 +10,7 @@ An in-depth paragraph about your project and overview of use.
 This repo contains codes and script used  to analyze data from  minimally invasive probe targeting perceptions of the gastrointestinal system via ingestion of a vibrating capsule. Scripts were used to analyze combined the mechanosensory stimulation of stomach signals with perceptual measurement of stomach sensations and continuous recording of electroencephalogram (EEG), electrogastrogram (EGG), and other peripheral physiological signals.
 ## Contents
 * ERP and Perceptual Measures
-  * Figure 2, Figure 3, Figure 5, Figure 6, Figure 7, Figure 8 Supplement Figures.
+  * Figure 2, Figure 3, Figure 5, Figure 6, Figure 7, Figure 8 and Supplement Figures.
 * Peripheral Physiological Signals
   * Figure 4, Figure 9 and Supplement Figures.
 ### Dependencies
