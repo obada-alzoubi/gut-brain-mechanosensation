@@ -1,6 +1,6 @@
 # gut-brain-mechanosensation-
 Neural indicators of gut-brain mechanosensation in humans manuscript codes
-![Alt text](/assets/brain-2.svg "Image Title")
+![Alt text](/assets/Github Gut-brain mechansoensation.png "Gut-Brain Mechansoensation in Humans")
 
 ## Description
 
