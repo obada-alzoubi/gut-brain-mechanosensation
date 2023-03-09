@@ -30,10 +30,7 @@ Run Figure4.Rmd in RStudio
 For any questions regarding codes in this repo, please contact <br />
 [Obada Al Zoubi](obada.y.alzoubi@gmail.com)
 
-
-Name
-
 ## Reference
 
 Please refer to this manuscript:
-* [Mayeli, Ahmad, et al. "Neural indicators of human gut feelings." BioRxiv (2021): 2021-02.]([https://github.com/matiassingers/awesome-readme](https://www.biorxiv.org/content/10.1101/2021.02.11.430867v3.full.pdf)
+* [Mayeli, Ahmad, et al. "Neural indicators of human gut feelings." BioRxiv (2021): 2021-02.](https://www.biorxiv.org/content/10.1101/2021.02.11.430867v3.full.pdf)
