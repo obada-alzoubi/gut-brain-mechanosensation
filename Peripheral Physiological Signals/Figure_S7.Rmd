@@ -1,0 +1,80 @@
+---
+title: "Figure S7"
+output: html_notebook
+---
+# Libraries
+```{r message=FALSE, warning=FALSE, echo=FALSE,include=FALSE}
+rm(list = ls())
+
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+library(rstatix)
+library(magrittr)
+library(knitr)
+library(openxlsx)
+
+```
+
+# Data
+```{r}
+df.HRV       <- readRDS( "../Data/HRV_extra.RDS")
+demographics <- read.csv("../Data/Demographics.csv")
+df.all       <- merge(df.HRV , demographics, by="id")
+
+df.all <- df.all %>%
+  filter(Metric %in% c( 'pHF','pLF'))%>%
+  filter(Source=='Original')%>%
+  rename("Measure" = "Metric")%>%
+  select(c("id", "Block","Measure", "Measure", "Value"))%>%
+  mutate(Measure=factor(Measure,level=c( 'pHF','pLF')))
+rm(df.HRV, demographics)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE,include=FALSE}
+  p <- ggboxplot(df.all,
+                 x = "Block",
+                 y = "Value",
+                 fill = "Block",
+                 add = "mean",
+                 facet.by = "Measure",
+                 palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                 ylab="%",
+                 outlier.shape =NA,
+                 #xlab=f, 
+                 ncol=2)
+
+    p<-p+theme_pubclean()+
+      theme(axis.text.x  = element_text(size=13),
+          axis.text.y  = element_text(size=13),
+          legend.position ='none',
+          strip.background = element_rect(fill="white"),
+          axis.title  = element_text(size=13),
+          strip.text = element_text(size = 15, face = "bold"))
+
+p
+```
+```{r}
+#
+file = '../Excel/Data_sharing.xlsx'
+# Aappend To existing sheet 
+wb <- loadWorkbook(file)
+addWorksheet(wb, "FigureS7")
+writeData(wb,
+          "FigureS7",
+          df.all,
+          colNames = TRUE,
+          rowNames = FALSE)
+
+saveWorkbook(wb, file, overwrite = TRUE)
+```
+```{r}
+df.all %>%
+  group_by(Measure, Block)%>%
+  count()
+```
+

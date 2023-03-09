@@ -1,0 +1,305 @@
+---
+title: "Figure S12"
+output: html_notebook
+---
+
+# Libraries 
+```{r message=FALSE, warning=FALSE, echo=FALSE,include=FALSE}
+rm(list = ls())
+
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+library(rstatix)
+library(magrittr)
+library(knitr)
+library(openxlsx)
+library(tidyr)
+```
+
+
+# Read Data
+```{r}
+df.all        <- readRDS("../Data/Physio_data.RDS")
+demographics  <- read.csv("../Data//Demographics.csv")
+
+```
+
+# Reorginze Data
+```{r}
+# Combine
+df.supp <- df.all %>%
+  merge(demographics, by = "id")
+
+# Create Original(M+F)
+df.supp.org <- df.supp %>%
+  filter(Source == 'Original') %>%
+  mutate(Sample = "Original")
+
+# Create Original (F)
+df.supp.org.F <- df.supp %>%
+  filter(Source == 'Original',
+         Sex == 'F') %>%
+  mutate(Sample = "Original-Females")
+
+
+df.supp.rep.F <- df.supp %>%
+  filter(Source == 'Replication') %>%
+  mutate(Sample = "Replication")
+
+df.supp.merge <- rbind(df.supp.rep.F, df.supp.org)
+df.supp.merge <- df.supp.merge %>%
+  mutate(Metric = plyr::revalue(
+    Metric,
+    c(
+      "SDNN" = "HRV-SDNN",
+      "HR_Phasic" = "Phasic HR",
+      "HR_Tonic" = "Tonic HR",
+      "BR" = "Tonic BR",
+      "Max_Phasic " = "Phasic SCR",
+      "EGG Total Power" = "EGG"
+    )
+  ))
+
+
+```
+
+# Plot Data
+```{r}
+
+y.labels    <-
+  c("ms",
+    "Beats per min.",
+    "Beats per min.",
+    "Breaths per min.",
+    "muS",
+    "Total Power")
+
+p1 <- ggboxplot(
+  df.supp.merge %>%
+    subset(Metric = 'HRV-SDNN'),
+  x      = "Block",
+  y      = "Value",
+  combine = T,
+  fill    = "Block",
+  xlab    = 'Block',
+  outlier.shape = NA,
+  palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                         ncol    = 1
+) +
+
+  theme_pubclean() +
+  facet_wrap(vars(Sample), nrow = 1, scales = "free_x") +
+  theme(
+    axis.text.x  = element_text(size = 8),
+    axis.text.y  = element_text(size = 8),
+    legend.position = 'none',
+    axis.title  = element_text(size = 8),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  ) +
+  xlab("") + ylab("ms") +
+  coord_cartesian(ylim = c(0, 150))
+
+p2 <- ggboxplot(
+  df.supp.merge %>%
+    subset(Metric == 'Phasic HR'),
+  x      = "Block",
+  y      = "Value",
+  combine = T,
+  fill    = "Block",
+  xlab    = 'Block',
+  outlier.shape = NA,
+  palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                         ncol    = 1
+) +
+ 
+  theme_pubclean() +
+  facet_wrap(vars(Sample), nrow = 1, scales = "free_x") +
+  theme(
+    axis.text.x  = element_text(size = 8),
+    axis.text.y  = element_text(size = 8),
+    legend.position = 'none',
+    axis.title  = element_text(size = 8),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  ) +
+  xlab("") + ylab("Beats per min.") +
+  coord_cartesian(ylim = c(-2, 3))
+
+p3 <- ggboxplot(
+  df.supp.merge %>%
+    subset(Metric == 'Tonic HR'),
+  x      = "Block",
+  y      = "Value",
+  combine = T,
+  fill    = "Block",
+  xlab    = 'Block',
+  outlier.shape = NA,
+  palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                         ncol    = 1
+) +
+  theme_pubclean() +
+  facet_wrap(vars(Sample), nrow = 1, scales = "free_x") +
+  theme(
+    axis.text.x  = element_text(size = 8),
+    axis.text.y  = element_text(size = 8),
+    legend.position = 'none',
+    axis.title  = element_text(size = 8),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  ) +
+  xlab("") + ylab("Beats per min.") +
+  coord_cartesian(ylim = c(40, 90))
+
+p4 <- ggboxplot(
+  df.supp.merge %>%
+    subset(Metric == 'Tonic BR'),
+  x      = "Block",
+  y      = "Value",
+  combine = T,
+  fill    = "Block",
+  xlab    = 'Block',
+  outlier.shape = NA,
+  palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                         ncol    = 1
+) +
+
+  theme_pubclean() +
+  facet_wrap(vars(Sample), nrow = 1, scales = "free_x") +
+  theme(
+    axis.text.x  = element_text(size = 8),
+    axis.text.y  = element_text(size = 8),
+    legend.position = 'none',
+    axis.title  = element_text(size = 8),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  ) +
+  xlab("") + ylab("Breaths per min.")
+
+p5 <- ggboxplot(
+  df.supp.merge %>%
+    subset(Metric == 'Phasic SCR'),
+  x      = "Block",
+  y      = "Value",
+  combine = T,
+  fill    = "Block",
+  xlab    = 'Block',
+  outlier.shape = NA,
+  palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                         ncol    = 1
+) +
+
+  theme_pubclean() +
+  facet_wrap(vars(Sample), nrow = 1, scales = "free_x") +
+  theme(
+    axis.text.x  = element_text(size = 8),
+    axis.text.y  = element_text(size = 8),
+    legend.position = 'none',
+    axis.title  = element_text(size = 8),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  ) +
+  xlab("") + ylab("muS") +
+  coord_cartesian(ylim = c(-0.5, 1.2))
+
+p6 <- ggboxplot(
+  df.supp.merge %>% 
+    subset(Metric == 'EGG'),
+  x      = "Block",
+  y      = "Value",
+  combine = T,
+  fill    = "Block",
+  xlab    = 'Block',
+  outlier.shape = NA,
+  palette = c("#7E6148B2",
+                         "#3C5488B2",
+                         "#00A087B2"),
+                         ncol    = 1
+) +
+
+  theme_pubclean() +
+  facet_wrap(vars(Sample), nrow = 1, scales = "free_x") +
+  theme(
+    axis.text.x  = element_text(size = 8),
+    axis.text.y  = element_text(size = 8),
+    legend.position = 'none',
+    axis.title  = element_text(size = 8),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  ) +
+  xlab("") + 
+  ylab("Total Power")
+
+
+
+```
+
+# Save Figure Without Stats 
+```{r}
+p16  <- cowplot::plot_grid(p1, p2, p3,p4, p5, p6, ncol = 1)
+#ggsave( '../Figures/FigureS12.png',p16, dpi = 600)
+```
+# Write Data 
+```{r}
+#
+file = '../Excel/Data_sharing_Raw.xlsx'
+
+# Generate data
+df.ready <- df.supp %>%
+  select(c("id", "Block", "Metric",
+           "Type" , "Value", "Sex",
+           "Source")) %>%
+  rename("Measure" = "Metric",
+         "Sample"="Source") %>%
+  mutate(
+    Type = replace(Type, Type == "Block", "Tonic"),
+    Type = replace(Type, Type == "Event", "Phasic")
+  )%>%
+  mutate(Measure = plyr::revalue(
+    Measure,
+    c(
+      "SDNN" = "HRV-SDNN",
+      "HR_Phasic" = "Phasic HR",
+      "HR_Tonic" = "Tonic HR",
+      "BR" = "Tonic BR",
+      "Max_Phasic " = "SCR",
+      "EGG Total Power" = "EGG"
+    )
+  ))
+
+
+# Append To existing sheet
+wb <- loadWorkbook(file)
+addWorksheet(wb, "FigureS12")
+writeData(wb,
+          "FigureS12",
+          df.ready,
+          colNames = TRUE,
+          rowNames = FALSE)
+
+saveWorkbook(wb, file, overwrite = TRUE)
+```
+
+# Number of Samples for rporting 
+```{r}
+
+df.ready %>%
+  group_by(Sample, Block,Sex, Measure)%>%
+  count() %>%
+  pivot_wider(names_from = Measure, values_from = n)%>%
+  write.csv('../Excel/Table_sample_size.csv', row.names = F)
+
+```
+
+

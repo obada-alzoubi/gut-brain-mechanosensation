@@ -1,0 +1,156 @@
+---
+title: "Figure S13"
+output: html_notebook
+---
+
+# Libraries 
+```{r message=FALSE, warning=FALSE, echo=FALSE,include=FALSE}
+rm(list = ls())
+
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+library(rstatix)
+library(magrittr)
+library(knitr)
+library(openxlsx)
+```
+
+
+# Read Data
+```{r}
+df.all        <- readRDS("../Data/Physio_data.RDS")
+demographics  <- read.csv("../Data//Demographics.csv")
+
+```
+
+
+# Females Original vs. Females Replication
+```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.height=12, fig.width=8}
+my_comparisons <- list(c("M", "F"))
+
+
+Measures      <- unique(df.all$Metric)
+y.labels      <-
+  c("ms",
+    "Beats per min.",
+    "Beats per min.",
+    "Breaths per min.",
+    "muS",
+    "Total Power")
+titles        <-
+  c("HRV-SDNN",
+    "Phasic HR",
+    "Tonic HR",
+    "Tonic BR",
+    "Phasic SCR",
+    "EGG")
+names(titles) <- Measures
+p.list        <- NULL
+c             <- 1
+for (f in Measures)
+{
+  tmp       <- df.all %>%
+    filter(Metric == f)
+  tmp       <- tmp %>%
+    merge(demographics, by = "id") %>%
+    filter(Sex == "F")
+  
+  tmp$id     <- as.factor(tmp$id)
+  tmp$Block  <- as.factor(tmp$Block)
+  tmp$Source <- as.factor(tmp$Source)
+  q <- ggboxplot(
+    tmp,
+    x      = "Block",
+    y      = "Value",
+    combine = T,
+    fill = "Source",
+    palette = c("#EFC000FF",
+                           "#CD534CFF"),
+                           ylab = y.labels[c],
+    xlab = 'Block',
+    ncol = 1,
+    title = titles[f]
+  ) +
+    theme_pubclean() +
+    theme(
+      axis.text.x  = element_text(size = 13),
+      axis.text.y  = element_text(size = 13),
+      legend.position = 'top',
+      axis.title  = element_text(size = 13)
+    ) +
+    stat_compare_means(
+      aes(group = Source),
+      method = "t.test",
+      hide.ns = T,
+      label = "p.signif"
+    )
+  
+  p.list[[f]] <- q
+  c <- c + 1
+}
+
+```
+
+
+
+# Save Figure Without Stats 
+```{r}
+
+p   <-cowplot::plot_grid(plotlist = p.list, ncol = 2)
+p
+#ggsave( '../Figures/FigureS13.svg',p, dpi = 600, width = 9, height = 8)
+```
+# Write Data 
+```{r}
+#
+file = '../Excel/Data_sharing_Raw.xlsx'
+
+# Generate data
+df.ready  <- merge(df.all, demographics, by='id')
+rm(df.all, demographics)
+df.ready <- df.ready %>%
+  filter(Sex=='F')%>%
+  select(c("id", "Block", "Metric",
+           "Type" , "Value", "Sex", "Source")) %>%
+  rename("Measure" = "Metric", "Sample"="Source") %>%
+  mutate(
+    Type = replace(Type, Type == "Block", "Tonic"),
+    Type = replace(Type, Type == "Event", "Phasic")
+  )
+
+
+# Append To existing sheet
+wb <- loadWorkbook(file)
+addWorksheet(wb, "FigureS13")
+writeData(wb,
+          "FigureS13",
+          df.ready,
+          colNames = TRUE,
+          rowNames = FALSE)
+
+saveWorkbook(wb, file, overwrite = TRUE)
+```
+
+# Write Summary stats
+```{r}
+#
+file = '../Excel/Data_sharing_Summary.xlsx'
+
+# Append To existing sheet
+df.ready2<-df.ready %>%
+  group_by(Measure, Sex, Sample)%>%
+  summarise(m=mean(Value), 'sd'=sd(Value))
+wb <- loadWorkbook(file)
+
+addWorksheet(wb, "FigureS13")
+writeData(wb,
+          "FigureS13",
+          df.ready2,
+          colNames = TRUE,
+          rowNames = FALSE)
+
+saveWorkbook(wb, file, overwrite = TRUE)
+```
+
+

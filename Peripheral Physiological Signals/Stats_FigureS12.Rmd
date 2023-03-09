@@ -1,0 +1,137 @@
+---
+title: "Stats. for Figure S12"
+output: html_notebook
+---
+
+# Libraries 
+```{r message=FALSE, warning=FALSE, echo=FALSE,include=FALSE}
+rm(list = ls())
+
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+library(rstatix)
+library(effsize)
+library(magrittr)
+library(knitr)
+library(xtable)
+library(kableExtra)
+library("openxlsx")
+
+```
+
+# Helping Funcs.
+```{r}
+run.stats <- function(df, name, adj="bonferroni"){
+  # Models
+  fit       <- lmer(Value ~ Block + (1 | id), data = df)
+  # put results in data framer
+  tmp.rs     <- anova(fit) %>%
+    as.data.frame() %>%
+    `rownames<-`(NULL) %>%
+    mutate(Measure = name)
+  
+  
+  # Post-hoc
+  tmp.pairwise <- emmeans(fit,
+                          list(pairwise  ~ Block),
+                          adjust = adj)  #post hoc (two correction egs)
+  tmp.pairwise <-
+    as.data.frame(tmp.pairwise$`pairwise differences of Block`) %>%
+    `colnames<-`(c("Comparison", "Estimate", "SE", "DF", "t-stat", "P-Value")) %>%
+    mutate(Measure = name) %>%
+    select(-c(SE))
+  
+  # Confidence intervals
+  tmp.pairwise <- tmp.pairwise %>% 
+    merge(as.data.frame(eff_size(
+    emmeans(fit, "Block"),
+    sigma = sigma(fit),
+    edf = df.residual(fit)
+  )) %>%
+    select(c(
+      'effect.size', 'SE', 'contrast', 'lower.CL', 'upper.CL'
+    )) %>%
+    rename("Comparison" = "contrast"))
+  return(list("LME"=tmp.rs, "Posthoc"=tmp.pairwise))
+}
+```
+
+
+# Read Data
+```{r}
+file <- '../Excel/Data_sharing_Raw.xlsx'
+```
+
+# Figure10 Stats
+```{r}
+df         <- read.xlsx(file, 'FigureS12')
+Measures   <- unique(df$Measure)
+df.posthoc <- NULL
+
+for (f in Measures) {
+  
+  # Original Data
+  tmp <- df %>% filter(Measure == f) %>%
+    filter(Sample == 'Original')
+  res.original <- run.stats(tmp, f)
+  posthoc.original <-
+    res.original[['Posthoc']] %>%
+    mutate(Sample = 'Original')
+  
+  # Original Data
+  tmp <- df %>% filter(Measure == f) %>%
+    filter(Sample == 'Original')%>%
+    filter(Sex=='F')
+  
+  # Original - Female Only
+  res.F.original <- run.stats(tmp, f)
+  posthoc.F.original <-
+    res.original[['Posthoc']] %>%
+    mutate(Sample = 'Original-Females')
+  
+  # Replication Data
+  tmp <-
+    df %>% filter(Measure == f) %>%
+    filter(Sample == 'Replication')
+  res.replication <- run.stats(tmp,
+                               f, adj="none")
+  posthoc.replication <-
+    res.replication[['Posthoc']] %>%
+    mutate(Sample = 'Replication')
+  
+  df.stat <- rbind(posthoc.original,
+                   posthoc.F.original,
+                   posthoc.replication)
+  
+  df.posthoc <- rbind(df.posthoc, df.stat)
+  rm(posthoc.original, posthoc.replication, tmp, res.original, res.replication)
+  
+}
+```
+
+# Print Results
+## T-stats
+```{r}
+
+# Append To existing sheet
+file = '../Excel/Data_sharing_Summary.xlsx'
+wb <- loadWorkbook(file)
+addWorksheet(wb, "FigureS12")
+writeData(wb,
+          "FigureS12",
+          df.posthoc,
+          colNames = TRUE,
+          rowNames = FALSE)
+
+saveWorkbook(wb, file, overwrite = TRUE)
+
+  df.posthoc%>%
+    kbl(caption = "Summary") %>%
+  kable_paper("basic", full_width = F, position = "left")
+
+
+```

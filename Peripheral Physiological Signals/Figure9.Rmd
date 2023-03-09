@@ -1,0 +1,164 @@
+---
+title: "Figure 10"
+output: html_notebook
+---
+
+# Libraries
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+rm(list = ls())
+
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+library(rstatix)
+library(magrittr)
+library(knitr)
+library(kableExtra)
+library(openxlsx)
+```
+
+# Data
+```{r}
+df.all        <- readRDS( "../Data/Physio_data.RDS")
+demographics  <- read.csv("../Data/Demographics.csv")
+df.all        <- merge(df.all , demographics, by="id")
+rm(demographics)
+```
+
+
+# Figure
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+order       <- c(1, 5, 6, 3, 4, 2)
+Measures    <- unique(df.all$Metric)
+Measures    <- as.vector(Measures[order])
+y.labels    <-
+  c("ms",
+    "Beats per min.",
+    "Beats per min.",
+    "Total Power",
+    "Breaths per min.",
+    "muS")
+
+# Plot Configs.
+y.nodge     <- c(0, 0,-0.002,-2, 0, 0)
+y_limtis_l  <- c(48,-0.2, 48, 0.0003, 11,-0.1)
+y_limtis_h  <- c(80, 1.5, 65, 0.0019, 14, 0.55)
+y.nodge     <- y.nodge[order]
+p.list      <- NULL
+c           <- 1
+
+for (f in Measures)
+{
+  # Get measurment
+  ylabel = y.labels[c]
+  df.plot <- df.all %>% filter(Metric == f)
+  
+  # Plot data
+  p <- ggerrorplot(
+    df.plot,
+    x = "Block",
+    y = "Value",
+    color = "Block",
+    add = "mean",
+    facet.by = "Source",
+    palette = c("#7E6148B2",
+                "#3C5488B2",
+                "#00A087B2"),
+    error.plot = "errorbar",
+    desc_stat = "mean_se",
+    ylab = ylabel,
+    width = 0.1,
+    ncol = 2,
+    size = 1
+  )
+  
+  # Extract Stats for the plot
+  df.stat <- df.plot %>%
+    group_by(id, Source) %>%
+    summarise(n_min = n()) %>%
+    filter(n_min == 3) %>%
+    select(-c(n_min, Source)) %>%
+    merge(df.plot, by = c('id')) %>%
+    group_by(Source, Block) %>%
+    group_by(Source) %>%
+    t_test(Value ~ Block, paire = TRUE) %>%
+    add_xy_position(dodge = 0.1)
+  
+  # Add x and y positions
+  df.stat$y.position[df.stat$Source == "Replication"] <-
+    df.stat$y.position[df.stat$Source == "Original"]
+  
+  # Add themes to plots 
+  p <- p + theme(text = element_text(size = 12, family = 'Helvetica'),
+                 legend.position = "none") +
+    theme(
+      axis.text.x = element_text(angle = 90, family = 'Helvetica')
+      ,
+      strip.placement = "outside",
+      axis.title.x = element_blank()
+    )
+  p <- p + coord_cartesian(ylim = c(y_limtis_l[c], y_limtis_h[c]))
+  p <- p + stat_pvalue_manual(df.stat)
+  p.list[[f]] <- p
+  c <- c+1
+
+}
+```
+# Save Figure 
+```{r message=FALSE, warning=FALSE}
+library(extrafont)
+p1  <- cowplot::plot_grid(p.list$SDNN, p.list$HR_Phasic, nrow = 1)
+p2  <- cowplot::plot_grid(p.list$HR_Tonic, p.list$`EGG Total Power`,nrow = 1)
+p3  <- cowplot::plot_grid(p.list$BR, p.list$`Max_Phasic `, nrow = 1)
+p  <- cowplot::plot_grid(p1,p2, p3, nrow = 3)
+p
+
+#ggsave("../Figures/Figure90.svg", height = 9, width = 8, dpi = 600)
+```
+# Write Final to Excel
+```{r}
+#
+file = '../Excel/Data_sharing_raw.xlsx'
+df_ready <- df.all %>%
+  select(c("id", "Block", "Metric", "Type" , "Value", "Source")) %>%
+  rename("Measure" = "Metric", "Sample" = "Source") %>%
+  mutate(
+    Type = replace(Type, Type == "Block", "Tonic"),
+    Type = replace(Type, Type == "Event", "Phasic"),
+    Measure = plyr::revalue(
+      Measure,
+      c(
+        "EGG Total Power" = "EGG",
+        "SDNN" = "HRV",
+        "Max_Phasic " = "SCR"
+      )
+    )
+    
+  )
+
+
+# Aappend To existing sheet 
+wb <- loadWorkbook(file)
+addWorksheet(wb, "Figure9")
+writeData(wb,
+          "Figure9",
+          df_ready,
+          col.names = TRUE,
+          row.names = FALSE)
+
+saveWorkbook(wb, file, overwrite = TRUE)
+
+
+```
+
+# Write number of Samples Per Block
+```{r}
+df_ready %>%
+  group_by(Measure, Block, Sample)%>%
+  count()
+```
+
+
+
+
+

@@ -1,0 +1,337 @@
+---
+title: "Figure 5"
+output: html_notebook
+---
+
+```{r message=FALSE, warning=FALSE}
+rm(list = ls())
+
+library(circlize)
+library(scales)
+library(dplyr)
+library("openxlsx")
+```
+
+# Read Data
+```{r}
+
+df.all        <- readRDS("../Data/Physio_data.RDS")
+demographics  <- read.csv("../Data//Demographics.csv")
+
+# Filter to Original Sample
+df.all <- merge(df.all, demographics, by = 'id')
+df.all <- df.all %>% filter(Source == 'Original')
+
+```
+
+# Figure 
+```{r}
+circos.clear()
+
+data       <- df.all
+data       <- data[complete.cases(data), ]
+data$Cat    <- paste0(data$Metric, "_", data$Type)
+data$factor <- as.factor(data$Cat)
+par(mfrow = c(1, 2))
+
+nSeg    = length(unique(data$Cat))
+
+LabsSeg = factor(
+  c(
+    "SDNN_Block",
+    "HR_Phasic_Event",
+    "HR_Tonic_Block",
+    "EGG Total Power_Block",
+    "BR_Block",
+    "Max_Phasic _Event"
+  ),
+  levels = c(
+    "BR_Block",
+    "EGG Total Power_Block",
+    "HR_Tonic_Block",
+    "HR_Phasic_Event",
+    "SDNN_Block",
+    "Max_Phasic _Event"
+  )
+)
+L = c("BR", "EGG", "HR(Block)", "HR(Event)", "HRV", "SCR")
+xlim_h = 18
+circos.clear()
+
+circos.initialize(LabsSeg, xlim = c(0.5, 3.5))
+circos.track(
+  ylim = c(5, 65),
+  bg.border = "white",
+  bg.lwd = 1,
+  bg.lty = 2,
+  track.height = 0.8,
+  cell.padding = c(0.2, 0.1)
+)
+
+highlight.sector(
+  "HR_Phasic_Event",
+  track.index = 1,
+  col = "#a6a6a622",
+  cex = 0.8,
+  text.col = "white",
+  niceFacing = TRUE
+)
+highlight.sector(
+  "HR_Tonic_Block",
+  track.index = 1,
+  col = "#a6a6a622",
+  cex = 0.8,
+  text.col = "white",
+  niceFacing = TRUE
+)
+highlight.sector(
+  "SDNN_Block",
+  track.index = 1,
+  col = "#a6a6a622",
+  cex = 0.8,
+  text.col = "white",
+  niceFacing = TRUE
+)
+highlight.sector(
+  "Max_Phasic _Event",
+  track.index = 1,
+  col = "#a6a6a622",
+  cex = 0.8,
+  text.col = "white",
+  niceFacing = TRUE
+)
+
+sec = "Max_Phasic _Event"
+tmp <- data %>% filter(Cat == sec)
+
+tmp$Value <- rescale(tmp$Value, c(20, 70))
+y <- tmp %>% filter(Cat == sec & Block == 'Baseline') %>% pull(Value)
+circos.boxplot(
+  y,
+  1,
+  track.index = 1,
+  sector.index = sec,
+  col = "#7E6148",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Normal') %>% pull(Value)
+circos.boxplot(
+  y,
+  2,
+  track.index = 1,
+  sector.index = sec,
+  col = "#3C5488",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Enhanced') %>% pull(Value)
+circos.boxplot(
+  y,
+  3,
+  track.index = 1,
+  sector.index = sec,
+  col = "#00A087",
+  cex = 0
+)
+
+
+sec = "HR_Phasic_Event"
+tmp <- data %>% filter(Cat == sec)
+tmp$Value <- rescale(tmp$Value, c(20, 70))
+y <- tmp %>% filter(Cat == sec & Block == 'Baseline') %>% pull(Value)
+circos.boxplot(
+  y,
+  1,
+  track.index = 1,
+  sector.index = sec,
+  col = "#7E6148",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Normal') %>% pull(Value)
+circos.boxplot(
+  y,
+  2,
+  track.index = 1,
+  sector.index = sec,
+  col = "#3C5488",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Enhanced') %>% pull(Value)
+circos.boxplot(
+  y,
+  3,
+  track.index = 1,
+  sector.index = sec,
+  col = "#00A087",
+  cex = 0
+)
+
+sec = "SDNN_Block"
+tmp <- data %>% filter(Cat == sec)
+tmp$Value <- rescale(tmp$Value, c(20, 70))
+y <- tmp %>% filter(Cat == sec & Block == 'Baseline') %>% pull(Value)
+circos.boxplot(
+  y,
+  1,
+  track.index = 1,
+  sector.index = sec,
+  col = "#7E6148",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Normal') %>% pull(Value)
+circos.boxplot(
+  y,
+  2,
+  track.index = 1,
+  sector.index = sec,
+  col = "#3C5488",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Enhanced') %>% pull(Value)
+circos.boxplot(
+  y,
+  3,
+  track.index = 1,
+  sector.index = sec,
+  col = "#00A087",
+  cex = 0
+)
+
+
+sec = "HR_Tonic_Block"
+tmp <- data %>% filter(Cat == sec)
+tmp$Value <- rescale(tmp$Value, c(20, 70))
+y <- tmp %>% filter(Cat == sec & Block == 'Baseline') %>% pull(Value)
+circos.boxplot(
+  y,
+  1,
+  track.index = 1,
+  sector.index = sec,
+  col = "#7E6148",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Normal') %>% pull(Value)
+circos.boxplot(
+  y,
+  2,
+  track.index = 1,
+  sector.index = sec,
+  col = "#3C5488",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Enhanced') %>% pull(Value)
+circos.boxplot(
+  y,
+  3,
+  track.index = 1,
+  sector.index = sec,
+  col = "#00A087",
+  cex = 0
+)
+
+#circos.text(2, y = 85, labels =L[c] )
+
+sec = "EGG Total Power_Block"
+tmp <- data %>% filter(Cat == sec)
+tmp$Value <- rescale(tmp$Value, c(20, 80))
+y <- tmp %>% filter(Cat == sec & Block == 'Baseline') %>% pull(Value)
+circos.boxplot(
+  y,
+  1,
+  track.index = 1,
+  sector.index = sec,
+  col = "#7E6148",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Normal') %>% pull(Value)
+circos.boxplot(
+  y,
+  2,
+  track.index = 1,
+  sector.index = sec,
+  col = "#3C5488",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Enhanced') %>% pull(Value)
+circos.boxplot(
+  y,
+  3,
+  track.index = 1,
+  sector.index = sec,
+  col = "#00A087",
+  cex = 0
+)
+
+
+sec = "BR_Block"
+tmp <- data %>% filter(Cat == sec)
+tmp$Value <- rescale(tmp$Value, c(20, 70))
+y <- tmp %>% filter(Cat == sec & Block == 'Baseline') %>% pull(Value)
+circos.boxplot(
+  y,
+  1,
+  track.index = 1,
+  sector.index = sec,
+  col = "#7E6148",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Normal') %>% pull(Value)
+circos.boxplot(
+  y,
+  2,
+  track.index = 1,
+  sector.index = sec,
+  col = "#3C5488",
+  cex = 0
+)
+y <- tmp %>% filter(Cat == sec & Block == 'Enhanced') %>% pull(Value)
+circos.boxplot(
+  y,
+  3,
+  track.index = 1,
+  sector.index = sec,
+  col = "#00A087",
+  cex = 0
+)
+
+#dev.off()
+```
+
+# Write Final Data
+```{r}
+#
+file = '../Excel/Data_sharing_Raw.xlsx'
+df_ready <- data %>%
+  select(c("id", "Block", "Metric", "Type" , "Value")) %>%
+  rename("Measure" = "Metric") %>%
+  mutate(
+    Type = replace(Type, Type == "Block", "Tonic"),
+    Type = replace(Type, Type == "Event", "Phasic"),
+    Measure = plyr::revalue(
+      Measure,
+      c(
+        "EGG Total Power" = "EGG",
+        "SDNN" = "HRV",
+        "Max_Phasic " = "SCR"
+      )
+    )
+  )
+
+
+
+
+write.xlsx(
+  df_ready,
+  file,
+  sheetName = "Figure4",
+  colNames = TRUE,
+  #row.names = TRUE,
+  append = TRUE
+)
+```
+# Write number of Samples Per Block
+```{r}
+df_ready %>%group_by(Measure, Block)%>%
+  count()
+```
+
+
