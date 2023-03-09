@@ -1,5 +1,5 @@
-# gut-brain-mechanosensation-
-Neural indicators of gut-brain mechanosensation in humans manuscript codes
+# Neural Indicators of Gut-Brain Mechanosensation
+
 ![Alt text](/assets/Gut-brain-mechansoensation.png)
 
 ## Description
