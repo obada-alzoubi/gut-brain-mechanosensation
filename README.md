@@ -13,7 +13,7 @@ Due to data privacy and intellectual property, not all data are available throug
 [Dr. Sahib S. Khalsa](skhalsa@laureateinstitute.org)
 ## Contents
 Codes are seperated based on the analysis:
-* ERP and Perceptual Measures
+* [ERP and Perceptual Measures](ERP%20and%20Perceptual%20Measures)
   * Figure 2, Figure 3, Figure 5, Figure 6, Figure 7, Figure 8 and Supplement Figures.
 * [Peripheral Physiological Signals](Peripheral%20Physiological%20Signals)
   * Figure 4, Figure 9 and Supplement Figures.
