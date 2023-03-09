@@ -22,7 +22,7 @@ First, raw data used to generate the manuscript should be downloaded after obtai
 Each script was named based on the associated figure and stats used in the manuscript. 
 
 ```
-code blocks for commands
+Run Figure4.Rmd in RStudio
 ```
 
 ## Authors
