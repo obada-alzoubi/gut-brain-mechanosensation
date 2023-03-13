@@ -34,5 +34,5 @@ For any questions regarding codes in this repo, please contact: <br />
 
 ## Reference
 
-Please refer to this manuscript:
+Please refer to this preprint:
 * [Mayeli, Ahmad, et al. "Neural indicators of human gut feelings." BioRxiv (2021): 2021-02.](https://www.biorxiv.org/content/10.1101/2021.02.11.430867v3.full.pdf)
