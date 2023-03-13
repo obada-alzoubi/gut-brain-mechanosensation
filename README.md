@@ -12,7 +12,7 @@ This repo contains codes and scripts used to analyze data from minimally invasiv
 Due to data privacy and intellectual property, not all data are available through this repo. However, data can be requested through Dr. Sahib S. Khalsa at Laureate Institute for Brain Research: <br />
 [Dr. Sahib S. Khalsa](skhalsa@laureateinstitute.org)
 ## Contents
-Codes are seperated based on the type of analysis:
+Codes are separated based on the type of analysis:
 * [ERP and Perceptual Measures](ERP%20and%20Perceptual%20Measures)
   * Figure 2, Figure 3, Figure 5, Figure 6, Figure 7, Figure 8 and Supplement Figures.
 * [Peripheral Physiological Signals](Peripheral%20Physiological%20Signals)
