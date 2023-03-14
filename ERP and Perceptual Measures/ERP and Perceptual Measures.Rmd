@@ -1,0 +1,3684 @@
+---
+title: "Neural indicators of gut-brain mechanosensation in humans "
+output: 
+Author: Ahmad Mayeli
+  pdf_document: default
+  html_notebook: default
+---
+
+# Libraries
+```{r}
+library(ggplot2)
+# install("ggplot2")
+# install.packages("rstatix")
+library(rstatix)
+library(optLog)
+library(RColorBrewer)
+library("ggsci")
+library("ggplot2")
+library("gridExtra")
+library(reshape2)
+#install.packages("reshape2")
+library(Hmisc)
+library(ppcor)
+library(emmeans)
+library(lme4)
+library(lmerTest)
+library(ggpubr)
+library(simr)
+library(dplyr)
+```
+
+## Figure 1a, Table S1 and Table S9 
+```{r}
+# Normalized A Prime (Figure 1a),Table S1 (LMER for Sex Effect), Table S9 (# of Outliers)
+APrime <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig1a.csv")
+
+# Detecting Outliers
+test <- APrime %>% 
+  #group_by(Group) %>% 
+  mutate(z.A_Prime = (A_Prime - mean(A_Prime)) / sd(A_Prime)) %>%
+  mutate(out.A_Prime = case_when(z.A_Prime > 3 | z.A_Prime < -3 ~ 1, TRUE ~ 0))
+subset(test, out.A_Prime=='1', select = c(ID:out.A_Prime))
+currentDataset.out <- subset(test, out.A_Prime=='1', select = c(ID:out.A_Prime))
+currentDataset.out$ID
+
+# Calculating stats
+cohens_d(A_Prime ~ Block, data = APrime, paired = TRUE, ci = TRUE)
+t.test(A_Prime ~ Block, data = APrime, paired = TRUE)
+
+# Table S1
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <- lmer(A_Prime~ Block+Sex+Block*Sex+(1|ID), data = APrime)
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+# Creating BoxPlot
+APrime$Block <- relevel(factor(APrime$Block),"Normal")
+APrime.df<- APrime %>%
+  tidyr::spread(Block, A_Prime) %>%
+  tidyr::gather("Block", "A_Prime", 3:4) %>%
+  dplyr::mutate(isMale = (Sex=="M") ) 
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+#APrime.df %>%
+  ggplot(APrime.df,aes(relevel(factor(APrime$Block),"Normal"),APrime$A_Prime, fill=APrime$Block)) +
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size=0.25) +
+  scale_fill_manual(values = c("#3C5488B2","#00A087B2" ))+
+  geom_point(aes(fill=Block,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c("#4DBBD5B2",'#E64B35B2'))+theme_bw() +
+  theme(text = element_text(size=9),legend.position = "none")+ylab('APrime')+
+  xlab("Block") + ylab("Normalized A Prime")+
+  ylim(1.55, 3.31)
+
+```
+
+## (Figure 1b), Table S1 (LMER for Sex Effect), Table S9 
+```{r}
+### Average Response Latency Latency (Figure 1b), Table S1 (LMER for Sex Effect), Table S9 (# of Outliers)
+
+AverageDelay <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig1b.csv")
+
+# Detecting Outliers
+AverageDelay <- na.omit(AverageDelay)
+test <- AverageDelay %>%
+  #group_by(Group) %>%
+  mutate(z.Response_Latency = (Response_Latency - mean(Response_Latency)) / sd(Response_Latency)) %>%
+  mutate(out.Response_Latency = case_when(z.Response_Latency > 3 |
+                                            z.Response_Latency < -3 ~ 1, TRUE ~ 0))
+subset(test,
+       out.Response_Latency == '1',
+       select = c(ID:out.Response_Latency))
+currentDataset.out <-
+  subset(test,
+         out.Response_Latency == '1',
+         select = c(ID:out.Response_Latency))
+currentDataset.out$ID
+
+# Table S1
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <-
+  lmer(Response_Latency ~ Block + Sex + Block * Sex + (1 |
+                                                         ID), data = AverageDelay)
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+# Removing Data from subject that didn't have True Positivce for Normal Block
+AverageDelay <- filter(AverageDelay, ID != "AY074")
+
+# Calculating stats
+cohens_d(
+  Response_Latency ~ Block,
+  data = AverageDelay,
+  paired = TRUE,
+  ci = TRUE
+)
+t.test(Response_Latency ~ Block, data = AverageDelay, paired = TRUE)
+
+
+# Creating BoxPlot
+AverageDelay <-
+  read.csv(
+    "/Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/AverageDelay_40_Final.csv"
+  )
+AverageDelay$Block <- relevel(factor(AverageDelay$Block), "Normal")
+AverageDelay.df <- AverageDelay %>%
+  tidyr::spread(Block, Response_Latency) %>%
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  tidyr::gather("Block", "Response_Latency", 3:4)
+
+AverageDelay.df$Block   <- as.factor(AverageDelay.df$Block)
+AverageDelay.df$isMale <- as.factor(AverageDelay.df$isMale)
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+#AverageDelay.df %>%
+ggplot(AverageDelay.df, aes(relevel(factor(AverageDelay$Block), "Normal"), Response_Latency, fill =
+                              Block)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.25) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  theme(text = element_text(size = 9), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("Average Response Latency") +
+  ylim(0.45, 1.89)
+
+```
+
+
+## STD Response Latency Latency (Figure 1c),Table S1 (LMER for Sex Effect), Table S9
+```{r}
+
+### STD Response Latency Latency (Figure 1c),Table S1 (LMER for Sex Effect), Table S9 (# of Outliers)
+
+STDDelay <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig1c.csv")
+
+#Detecting Outliers
+test <- STDDelay %>% 
+  #group_by(Group) %>% 
+  mutate(z.Response_Latency_STD = (Response_Latency_STD - mean(Response_Latency_STD)) / sd(Response_Latency_STD)) %>%
+  mutate(out.Response_Latency_STD = case_when(z.Response_Latency_STD > 3 | z.Response_Latency_STD < -3 ~ 1, TRUE ~ 0))
+subset(test, out.Response_Latency_STD=='1', select = c(ID:out.Response_Latency_STD))
+currentDataset.out <- subset(test, out.Response_Latency_STD=='1', select = c(ID:out.Response_Latency_STD))
+currentDataset.out$ID
+
+# Table S1
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <- lmer(Response_Latency_STD~ Block+Sex+Block*Sex+(1|ID), data = STDDelay)
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+
+# Removing Data from subject that didn't have True Positivce for Normal Block
+STDDelay <-filter(STDDelay, ID != "AY074" )
+
+# Calculating stats
+cohens_d(Response_Latency_STD ~ Block, data = STDDelay, paired = TRUE, ci = TRUE)
+t.test(Response_Latency_STD ~ Block, data = STDDelay, paired = TRUE)
+
+
+# Creating BoxPlot
+STDDelay <- read.csv("/Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/STD_Delay_40_Final.csv")
+
+STDDelay$Block <- relevel(factor(STDDelay$Block),"Normal")
+STDDelay.df<- STDDelay %>%
+  tidyr::spread(Block, Response_Latency_STD) %>%
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  tidyr::gather("Block", "Response_Latency_STD", 3:4)
+STDDelay.df$Block   <-as.factor(STDDelay.df$Block)
+STDDelay.df$isMale <-as.factor(STDDelay.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+#STDDelay.df %>%
+  
+  ggplot(STDDelay.df ,aes(relevel(factor(STDDelay$Block),"Normal"),Response_Latency_STD, fill=Block)) +
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size=0.25) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2"))+
+  geom_point(aes(fill=Block,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2"))+theme_bw() +
+  ylab('Response Delay')+
+  theme(text = element_text(size=9),legend.position = "none")+ylab('Response Delay')+
+  xlab("Block") + ylab("STD Response Latency")+
+  ylim(0.05, 0.8)
+
+```
+
+## Figure 2a
+```{r}
+# Figure 2a
+Dat <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig2a.csv")
+#Dat <- read.csv("/Users/ahmadmayeli/Downloads/Data.csv")
+long_Dat <- gather(Dat,Subject, Amplitude,Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat,aes(Time,Amplitude))+
+  theme_classic()+scale_color_manual(values = c('Enhanced'='#00A087B2','Normal'='#3C5488B2'))
+G <- levCat.plot+
+  theme( axis.text.x = element_text(color = "grey20", size = 11, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+              axis.text.y = element_text(color = "grey20", size = 11, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),  
+              axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),
+              axis.title.y = element_text(color = "grey20", size = 12, angle = 90, hjust = .5, vjust = .5, face = "plain"),panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank())+
+  stat_summary(fun.data = mean_se,geom = "ribbon",size = 1,aes(fill = Block),alpha = 0.3)+
+  guides(fill = "none")+
+  stat_summary(fun = mean,geom = "line",size = 1,aes(colour = Block), show.legend = FALSE)+
+  labs(x = "Time (ms)",y = expression(paste("Amplitude (",mu,"V)")),colour = "")+
+  geom_vline(xintercept = 0,linetype = "dashed" )+
+  #geom_vline(xintercept = 100,linetype = "dashed" )+
+  #geom_vline(xintercept = 176,linetype = "dashed" )+
+  #geom_vline(xintercept = 400,linetype = "dashed" )+
+  #geom_vline(xintercept = 720,linetype = "dashed" )+
+  geom_hline(yintercept = 0,linetype = "dashed")+  scale_fill_manual(values = c('Enhanced'='#00A087B2','Normal'='#3C5488B2'))+ expand_limits(y=c(-1,5.5))
+
+G
+```
+
+
+## Figure 2c
+```{r}
+# Figure 2c
+
+AllDat <- read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig2c-d.csv')
+AllDat <-na.omit(AllDat)
+test <- AllDat %>% 
+  #group_by(Group) %>% 
+  mutate(z.ERP_Latency = (ERP_Latency - mean(ERP_Latency)) / sd(ERP_Latency)) %>%
+  mutate(out.ERP_Latency = case_when(z.ERP_Latency > 3 | z.ERP_Latency < -3 ~ 1, TRUE ~ 0))
+subset(test, out.ERP_Latency=='1', select = c(ID:out.ERP_Latency))
+currentDataset.out <- subset(test, out.ERP_Latency=='1', select = c(ID:out.ERP_Latency))
+currentDataset.out$ID
+
+test <- filter(test,out.ERP_Latency=='0')
+# No Outliers detected
+#AllDat <-filter(AllDat, ID != currentDataset.out$ID)
+
+test <- AllDat %>% 
+  #group_by(Group) %>% 
+  mutate(z.Average.ERP.400.720ms = (Average.ERP.400.720ms - mean(Average.ERP.400.720ms)) / sd(Average.ERP.400.720ms)) %>%
+  mutate(out.Average.ERP.400.720ms = case_when(z.Average.ERP.400.720ms > 3 | z.Average.ERP.400.720ms < -3 ~ 1, TRUE ~ 0))
+subset(test, out.Average.ERP.400.720ms=='1', select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out <- subset(test, out.Average.ERP.400.720ms=='1', select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out$ID
+
+test <- filter(test,out.Average.ERP.400.720ms=='0')
+
+# Removing Outlier
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig2c.pdf", width = 3, height=2.5)
+
+ggplot(test, aes(x=Normalized.A.Prime, y=Average.ERP.400.720ms)) +
+      geom_point(aes(colour = Block),size = 2, show.legend = FALSE) +theme_bw()+
+      geom_smooth(method = "lm",alpha = 0.3, color= "black")+
+        scale_color_manual(values = c( "#00A087B2", "#3C5488B2"))+
+  scale_fill_manual(values = c("#00A087B2"))+ 
+        theme(axis.text.x = element_text(color = "grey20", size = 11, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+              axis.text.y = element_text(color = "grey20", size = 11, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),  
+              axis.title.x = element_text(color = "grey20", size = 12, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),
+              axis.title.y = element_text(color = "grey20", size = 12, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+              plot.title = element_text(hjust = 0.5, size = 14)) +   ylab("Average ERP 400-720 ms")+   xlab("Normalized A-Prime")
+
+dev.off()
+pcor.test(test$Normalized.A.Prime,test$Average.ERP.400.720ms,test$blk,method="spearman")
+CorrDat <-filter(test, Block == "Normal")
+cor.test(CorrDat$Normalized.A.Prime,CorrDat$Average.ERP.400.720ms,method="spearman")
+CorrDat <-filter(test, Block == "Enhanced")
+cor.test(CorrDat$Normalized.A.Prime,CorrDat$Average.ERP.400.720ms,method="spearman")
+```
+
+## Figure 2d
+```{r}
+# Figure 2d
+AllDat <-
+  read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig2c-d.csv')
+AllDat <- na.omit(AllDat)
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.ERP_Latency = (ERP_Latency - mean(ERP_Latency)) / sd(ERP_Latency)) %>%
+  mutate(out.ERP_Latency = case_when(z.ERP_Latency > 3 |
+                                       z.ERP_Latency < -3 ~ 1, TRUE ~ 0))
+subset(test, out.ERP_Latency == '1', select = c(ID:out.ERP_Latency))
+currentDataset.out <-
+  subset(test, out.ERP_Latency == '1', select = c(ID:out.ERP_Latency))
+currentDataset.out$ID
+
+test <- filter(test, out.ERP_Latency == '0')
+# No Outliers detected
+#AllDat <-filter(AllDat, ID != currentDataset.out$ID)
+
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.Response.Latency = (Response.Latency - mean(Response.Latency)) / sd(Response.Latency)) %>%
+  mutate(out.Response.Latency = case_when(z.Response.Latency > 3 |
+                                            z.Response.Latency < -3 ~ 1, TRUE ~ 0))
+subset(test,
+       out.Response.Latency == '1',
+       select = c(ID:out.Response.Latency))
+currentDataset.out <-
+  subset(test,
+         out.Response.Latency == '1',
+         select = c(ID:out.Response.Latency))
+currentDataset.out$ID
+
+test <- filter(test, out.Response.Latency == '0')
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig2d.pdf",
+    width = 3,
+    height = 2.5)
+
+ggplot(AllDat, aes(x = ERP_Latency, y = Response.Latency, color = Block)) +
+  geom_point(aes(colour = Block), size = 2, show.legend = FALSE) +
+  theme_bw() +
+  geom_smooth(method = "lm",
+              alpha = 0.3,
+              color = "black") +
+  scale_color_manual(values = c("#00A087B2", "#3C5488B2")) +
+  theme(
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 11,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 11,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 12,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 12,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 14)
+  ) +   ylab("Response Latency") +   xlab("ERP Latency")
+
+dev.off()
+
+AllDat <- na.omit(AllDat)
+
+pcor.test(AllDat$ERP_Latency,
+          AllDat$Response.Latency,
+          AllDat$blk,
+          method = "spearman")
+CorrDat <- filter(AllDat, Block == "Normal")
+cor.test(CorrDat$ERP_Latency, CorrDat$Response.Latency, method = "spearman")
+CorrDat <- filter(AllDat, Block == "Enhanced")
+cor.test(CorrDat$ERP_Latency, CorrDat$Response.Latency, method = "spearman")
+```
+
+## Figure 5a
+```{r}
+#Figure 5a
+Stom <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig5a.csv")
+Stom$Time <- relevel(factor(Stom$Time), "Pre")
+
+
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <-
+  lmer(Intensity ~ Time + Sex + Time * Sex + (1 | ID), data = Stom)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+
+
+# Calculating stats
+cohens_d(Intensity ~ Time,
+         data = Stom,
+         paired = TRUE,
+         ci = TRUE)
+t.test(Intensity ~ Time, data = Stom, paired = TRUE)
+
+Stom.df <- Stom %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Stom.df$Time   <- as.factor(Stom.df$Time)
+
+Stom.df$isMale <- as.factor(Stom.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig5a.pdf",
+    width = 1.8,
+    height = 1.9)
+
+#ggplot(aes(Time,Intensity, fill=Time)) +
+ggplot(Stom.df, aes(relevel(factor(Stom$Time), "Pre"), Intensity, fill =
+                      Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Stomach/Digestive Intensity') + xlab('Time') +
+  ylim(-2, 93)
+dev.off()
+```
+
+## Figure 5b and Table S5
+```{r}
+#Figure 5b and Table S5
+Breath <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig5b.csv")
+Breath$Time <- relevel(factor(Breath$Time), "Pre")
+
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <-
+  lmer(Intensity ~ Time + Sex + Time * Sex + (1 | ID), data = Breath)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+
+
+# Calculating stats
+
+cohens_d(Intensity ~ Time,
+         data = Breath,
+         paired = TRUE,
+         ci = TRUE)
+t.test(Intensity ~ Time, data = Breath, paired = TRUE)
+
+
+Breath.df <- Breath %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Breath.df$Time   <- as.factor(Breath.df$Time)
+
+Breath.df$isMale <- as.factor(Breath.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig5b.pdf",
+    width = 1.8,
+    height = 1.9)
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Breath.df, aes(relevel(factor(Breath$Time), "Pre"), Intensity, fill =
+                        Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Breath Intensity') + xlab('Time') +
+  ylim(-2, 93)
+dev.off()
+```
+
+## Figure 5c
+```{r}
+#Figure 5c
+HeartBeat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig5c.csv")
+HeartBeat$Time <- relevel(factor(HeartBeat$Time), "Pre")
+
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <-
+  lmer(Intensity ~ Time + Sex + (1 | ID), data = HeartBeat)
+fit               <-
+  lmer(Intensity ~ Time + Sex + Time * Sex + (1 |
+                                                ID), data = HeartBeat)
+
+# Calculating stats
+
+cohens_d(Intensity ~ Time,
+         data = HeartBeat,
+         paired = TRUE,
+         ci = TRUE)
+t.test(Intensity ~ Time, data = HeartBeat, paired = TRUE)
+
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+
+
+HeartBeat.df <- HeartBeat %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+HeartBeat.df$Time   <- as.factor(HeartBeat.df$Time)
+
+HeartBeat.df$isMale <- as.factor(HeartBeat.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig5c.pdf",
+    width = 1.8,
+    height = 1.9)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(HeartBeat.df, aes(relevel(factor(HeartBeat$Time), "Pre"), Intensity, fill =
+                           Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('HeartBeat Intensity') + xlab('Time') +
+  ylim(-2, 93)
+dev.off()
+```
+
+
+## Figure 5d
+```{r}
+#Figure 5d
+Muscle <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig5d.csv")
+Muscle$Time <- relevel(factor(Muscle$Time), "Pre")
+
+# Fitting lmer for detecting effect of Block and Sex and their interactions
+fit               <-
+  lmer(Intensity ~ Time + Sex + Time * Sex + (1 | ID), data = Muscle)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+
+
+# Calculating stats
+cohens_d(Intensity ~ Time,
+         data = Muscle,
+         paired = TRUE,
+         ci = TRUE)
+t.test(Intensity ~ Time, data = Muscle, paired = TRUE)
+
+
+
+Muscle.df <- Muscle %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Muscle.df$Time   <- as.factor(Muscle.df$Time)
+
+Muscle.df$isMale <- as.factor(Muscle.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig5d.pdf",
+    width = 1.8,
+    height = 1.9)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Muscle.df, aes(relevel(factor(Muscle$Time), "Pre"), Intensity, fill =
+                        Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Muscle Intensity') + xlab('Time') +
+  ylim(-2, 93)
+dev.off()
+```
+
+## Figure 6b
+```{r}
+#Figure 6b
+df = read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig6b.csv')
+df <- df %>%
+  pivot_longer(cols = Pre:X60.minute) %>%
+  rename("Location" = "Time")
+df$name <- gsub('X', "", df$name)
+df$name <- gsub('\\.', " ", df$name)
+
+df$Location <-
+  factor(df$Location, level = c('Stomach', 'Small intestine'))
+# Change position: Interleaved (dodged) bar plot
+breaks = c(1, 20, 40, 60, 80, 100)
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig6a.pdf",
+    width = 3.6,
+    height = 1.8)
+
+ggbarplot(
+  df,
+  "name",
+  "value",
+  fill = "Location",
+  color = "Location",
+  palette = c("#4472C4", "#ED7D31"),
+  position = position_dodge(0.9)
+) +
+  scale_y_continuous(breaks = breaks,
+                     labels = paste0(breaks, "%")) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    legend.position = "top",
+    legend.title = element_text(size = 6),
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    legend.text = element_text(size = 6),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 7,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 7,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 7)
+  ) + rotate_x_text(30) + ylab('Percentage') + theme(axis.title.x = element_blank())
+dev.off()
+
+```
+
+## Figure 6c
+```{r}
+#Figure 6c
+df = read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig6c.csv')
+df <- df %>%
+  pivot_longer(cols = Pre:X60.minute) %>%
+  rename("Location" = "Time")
+df$name <- gsub('X', "", df$name)
+df$name <- gsub('\\.', " ", df$name)
+
+df$Location <-
+  factor(df$Location, level = rev(c(
+    'Fundus', 'Body', 'Antrum',
+    'Duodenum', 'Jejunum',
+    'Ileum'
+  )))
+df$value <- round(df$value * 100)
+# Change position: Interleaved (dodged) bar plot
+breaks = c(0, 20, 40, 60, 80, 100)
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig6b.pdf",
+    width = 3.5,
+    height = 2.5)
+
+ggbarplot(
+  df,
+  "name",
+  "value",
+  fill = "Location",
+  color = "Location",
+  palette = rev(
+    c(
+      "#2F5597",
+      "#8FAADC",
+      "#B4C7E7",
+      "#F8CBAD",
+      "#F4B183",
+      "#C55A11"
+    )
+  )
+) +
+  scale_y_continuous(breaks = breaks,
+                     labels = paste0(breaks, "%")) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    legend.position = "top",
+    legend.title = element_text(size = 6),
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    legend.text = element_text(size = 6),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 7,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 7,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 7)
+  ) + rotate_x_text(30) + ylab('Percentage') + theme(axis.title.x = element_blank())
+dev.off()
+```
+
+## Figure 7 & Figure 7a
+```{r}
+
+## Figure 7
+# Figure 7a
+APrime <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig7a.csv")
+
+APrime$Block <- relevel(factor(APrime$Block),"Normal")
+p <- ggerrorplot(APrime, x = "Block", y = "A_Prime",
+                 color = "Block",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(2.2, 3.2), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="Normalized A Prime", width=0.1, size=0.2) #, font.ytickslab = 4)
+stat.test <- APrime %>%
+  group_by(Group) %>%
+  t_test(A_Prime ~ Block, paire =TRUE) %>%
+  mutate(y.position = 3)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7a.pdf", width = 2.2, height=1.8)
+
+
+# Calculate Stats after removing Outlliers
+APrime <-filter(APrime, ID != "BL991")
+APrime_Rep <-filter(APrime, Group == "Replication")
+# Calculating stats
+cohens_d(A_Prime ~ Block, data = APrime_Rep, paired = TRUE, ci = TRUE)
+t.test(A_Prime ~ Block, data = APrime_Rep, paired = TRUE)
+
+APrime_Orig <-filter(APrime, Group == "Original")
+# Calculating stats
+cohens_d(A_Prime ~ Block, data = APrime_Orig, paired = TRUE, ci = TRUE)
+t.test(A_Prime ~ Block, data = APrime_Orig, paired = TRUE)
+
+
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Figure 7b
+AverageDelay <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig7b.csv")
+AverageDelay$Block <- relevel(factor(AverageDelay$Block),"Normal")
+p <- ggerrorplot(AverageDelay, x = "Block", y = "Response_Latency",
+                 color = "Block",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(0.6, 1.25), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="Average Response Latency", width=0.1, size=0.2)
+stat.test <- AverageDelay %>%
+  group_by(Group) %>%
+  t_test(Response_Latency ~ Block, paire =TRUE) %>%
+  mutate(y.position = 1.1)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7b.pdf", width = 2.2, height=1.8)
+
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+AverageDelay <-filter(AverageDelay, ID != "AY074" &ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237" & ID != "BM370")
+AverageDelay_Rep <-filter(AverageDelay, Group == "Replication")
+# Calculating stats
+cohens_d(Response_Latency ~ Block, data = AverageDelay_Rep, paired = TRUE, ci = TRUE)
+t.test(Response_Latency ~ Block, data = AverageDelay_Rep, paired = TRUE)
+
+AverageDelay_Orig <-filter(AverageDelay, Group == "Original")
+# Calculating stats
+cohens_d(Response_Latency ~ Block, data = AverageDelay_Orig, paired = TRUE, ci = TRUE)
+t.test(Response_Latency ~ Block, data = AverageDelay_Orig, paired = TRUE)
+
+
+# Figure 7c
+
+STDDelay <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig7c.csv")
+
+STDDelay$Block <- relevel(factor(STDDelay$Block),"Normal")
+
+p <- ggerrorplot(STDDelay, x = "Block", y = "Response_Latency_STD",
+                 color = "Block",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(0.2, 0.7), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="STD Response Latency", width=0.1, size=0.2)
+stat.test <- STDDelay %>%
+  group_by(Group) %>%
+  t_test(Response_Latency_STD ~ Block, paire =TRUE) %>%
+  mutate(y.position = 0.55)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7c.pdf", width = 2.2, height=1.8)
+
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+STDDelay <-filter(STDDelay, ID != "AY074" &ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237" & ID != "BN299")
+STDDelay_Rep <-filter(STDDelay, Group == "Replication")
+# Calculating stats
+cohens_d(Response_Latency_STD ~ Block, data = STDDelay_Rep, paired = TRUE, ci = TRUE)
+t.test(Response_Latency_STD ~ Block, data = STDDelay_Rep, paired = TRUE)
+
+STDDelay_Orig <-filter(STDDelay, Group == "Original")
+# Calculating stats
+cohens_d(Response_Latency_STD ~ Block, data = STDDelay_Orig, paired = TRUE, ci = TRUE)
+t.test(Response_Latency_STD ~ Block, data = STDDelay_Orig, paired = TRUE)
+
+
+
+# Figure 7d
+Stomach <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig7d.csv")
+Stomach$Time <- relevel(factor(Stomach$Time),"Pre")
+p <- ggerrorplot(Stomach, x = "Time", y = "Intensity",
+              color = "Time",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(8, 75), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="Stomach/digestive Intensity", width=0.1, size=0.2)
+stat.test <- Stomach %>%
+  group_by(Group) %>%
+  t_test(Intensity ~ Time, paire =TRUE) %>%
+  mutate(y.position = 68)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7d.pdf", width = 1.75, height=1.8)
+
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Calculate Stats 
+Stomach_Rep <-filter(Stomach, Group == "Replication")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Stomach_Rep, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Stomach_Rep, paired = TRUE)
+
+Stomach_Orig <-filter(Stomach, Group == "Original")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Stomach_Orig, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Stomach_Orig, paired = TRUE)
+
+# Figure 7E
+Breath <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Intensity_of_Breath_61.csv")
+Breath$Time <- relevel(factor(Breath$Time),"Pre")
+p <- ggerrorplot(Breath, x = "Time", y = "Intensity",
+              color = "Time",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(8, 75), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="Breath Intensity", width=0.1, size=0.2)
+stat.test <- Breath %>%
+  group_by(Group) %>%
+  t_test(Intensity ~ Time, paire =TRUE) %>%
+  mutate(y.position = 68)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7e.pdf", width = 1.75, height=1.8)
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Calculate Stats 
+Breath_Rep <-filter(Breath, Group == "Replication")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Breath_Rep, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Breath_Rep, paired = TRUE)
+
+Breath_Orig <-filter(Breath, Group == "Original")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Breath_Orig, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Breath_Orig, paired = TRUE)
+
+
+# Figure 7F
+Heartbeat <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Intensity_of_HeartBeat_61.csv")
+Heartbeat$Time <- relevel(factor(Heartbeat$Time),"Pre")
+p <- ggerrorplot(Heartbeat, x = "Time", y = "Intensity",
+              color = "Time",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(8, 75), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="Heartbeat Intensity", width=0.1, size=0.2)
+stat.test <- Heartbeat %>%
+  group_by(Group) %>%
+  t_test(Intensity ~ Time, paire =TRUE) %>%
+  mutate(y.position = 68)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7f.pdf", width = 1.75, height=1.8)
+
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Calculate Stats 
+Heartbeat_Rep <-filter(Heartbeat, Group == "Replication")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Heartbeat_Rep, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Heartbeat_Rep, paired = TRUE)
+
+Heartbeat_Orig <-filter(Heartbeat, Group == "Original")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Heartbeat_Orig, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Heartbeat_Orig, paired = TRUE)
+
+# Figure 7G
+Muscle <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Intensity_of_Muscle_61.csv")
+Muscle$Time <- relevel(factor(Muscle$Time),"Pre")
+p <- ggerrorplot(Muscle, x = "Time", y = "Intensity",
+              color = "Time",add = "mean", add.params = list(size = 0.15),facet.by = "Group", palette = c("#3C5488B2","#00A087B2"), ylim = c(8, 75), error.plot = "errorbar",
+                 desc_stat = "mean_se",ylab="Muscle Intensity", width=0.1, size=0.2)
+stat.test <- Muscle %>%
+  group_by(Group) %>%
+  t_test(Intensity ~ Time, paire =TRUE) %>%
+  mutate(y.position = 68)%>%
+  add_significance("p")
+stat.test 
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig7g.pdf", width = 1.75, height=1.8)
+p + stat_pvalue_manual(stat.test,label =  "p.signif",vjust = 0, bracket.nudge.y = 0.05, tip.length = 0.01,label.size =6)+
+  theme(text = element_text(size = 6),legend.position = "none")
+dev.off()
+
+# Calculate Stats 
+Muscle_Rep <-filter(Muscle, Group == "Replication")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Muscle_Rep, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Muscle_Rep, paired = TRUE)
+
+Muscle_Orig <-filter(Muscle, Group == "Original")
+# Calculating stats
+cohens_d(Intensity ~ Time, data = Muscle_Orig, paired = TRUE, ci = TRUE)
+t.test(Intensity ~ Time, data = Muscle_Orig, paired = TRUE)
+```
+
+## Figure 8a
+```{r}
+#Figure 8a
+Dat <-
+read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig8a.csv")
+#Dat <- read.csv("/Users/ahmadmayeli/Downloads/Data.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj21)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+'#3C5488B2'))
+G <- levCat.plot +
+theme(
+text = element_text(size = 9),
+panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()
+) +
+stat_summary(
+fun.data = mean_se,
+geom = "ribbon",
+size = 1,
+aes(fill = Block),
+alpha = 0.3
+) +
+guides(fill = "none") +
+stat_summary(
+fun = mean,
+geom = "line",
+size = 1,
+aes(colour = Block),
+show.legend = FALSE
+) +
+labs(x = "Time (ms)",
+y = expression(paste("Amplitude (", mu, "V)")),
+colour = "") +
+geom_vline(xintercept = 0, linetype = "dashed") +
+#geom_vline(xintercept = 100,linetype = "dashed" )+
+#geom_vline(xintercept = 176,linetype = "dashed" )+
+geom_vline(xintercept = 400, linetype = "dashed") +
+geom_vline(xintercept = 720, linetype = "dashed") +
+geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+'#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8a.pdf",
+width = 3,
+height = 2)
+G
+dev.off()
+```
+
+## Figure 8c
+```{r}
+
+
+#Figure 8c
+
+AllDat <-
+  read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig8c-d.csv')
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.Average.ERP.400.720ms = (Average.ERP.400.720ms - mean(Average.ERP.400.720ms)) / sd(Average.ERP.400.720ms)) %>%
+  mutate(
+    out.Average.ERP.400.720ms = case_when(
+      z.Average.ERP.400.720ms > 3 |
+        z.Average.ERP.400.720ms < -3 ~ 1,
+      TRUE ~ 0
+    )
+  )
+subset(test,
+       out.Average.ERP.400.720ms == '1',
+       select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out <-
+  subset(test,
+         out.Average.ERP.400.720ms == '1',
+         select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out$ID
+
+test <- filter(test, out.Average.ERP.400.720ms == '0')
+
+test <- test %>%
+  #group_by(Group) %>%
+  mutate(z.Normalized.A.Prime = (Normalized.A.Prime - mean(Normalized.A.Prime)) / sd(Normalized.A.Prime)) %>%
+  mutate(
+    out.Normalized.A.Prime = case_when(z.Normalized.A.Prime > 3 |
+                                         z.Normalized.A.Prime < -3 ~ 1, TRUE ~ 0)
+  )
+subset(test,
+       out.Normalized.A.Prime == '1',
+       select = c(ID:out.Normalized.A.Prime))
+currentDataset.out <-
+  subset(test,
+         out.Normalized.A.Prime == '1',
+         select = c(ID:out.Normalized.A.Prime))
+currentDataset.out$ID
+test <- filter(test, out.Normalized.A.Prime == '0')
+
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8c.pdf",
+    width = 1.5,
+    height = 1.2)
+
+ggplot(test, aes(x = Normalized.A.Prime, y = Average.ERP.400.720ms)) +
+  geom_point(aes(colour = Block), size = 0.5, show.legend = FALSE) +
+  theme_bw() +
+  geom_smooth(
+    method = "lm",
+    alpha = 0.3,
+    color = "black",
+    size = 0.5
+  ) +
+  scale_color_manual(values = c("#00A087B2", "#3C5488B2")) +
+  scale_fill_manual(values = c("#00A087B2")) +
+  theme(
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 9.5)
+  ) +   ylab("Average ERP 400-720 ms") +   xlab("Normalized A-Prime")
+
+dev.off()
+
+pcor.test(test$Normalized.A.Prime,
+          test$Average.ERP.400.720ms,
+          test$blk,
+          method = "spearman")
+CorrDat <- filter(test, Block == "Normal")
+cor.test(CorrDat$Normalized.A.Prime,
+         CorrDat$Average.ERP.400.720ms,
+         method = "spearman")
+CorrDat <- filter(test, Block == "Enhanced")
+cor.test(CorrDat$Normalized.A.Prime,
+         CorrDat$Average.ERP.400.720ms,
+         method = "spearman")
+```
+
+## Figure 8d
+```{r}
+# Figure 8d
+AllDat <-
+  read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig8c-d.csv')
+
+
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.ERP_Latency = (ERP_Latency - mean(ERP_Latency)) / sd(ERP_Latency)) %>%
+  mutate(out.ERP_Latency = case_when(z.ERP_Latency > 3 |
+                                       z.ERP_Latency < -3 ~ 1, TRUE ~ 0))
+subset(test, out.ERP_Latency == '1', select = c(ID:out.ERP_Latency))
+currentDataset.out <-
+  subset(test, out.ERP_Latency == '1', select = c(ID:out.ERP_Latency))
+currentDataset.out$ID
+
+
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.Response.Latency = (Response.Latency - mean(Response.Latency)) / sd(Response.Latency)) %>%
+  mutate(out.Response.Latency = case_when(z.Response.Latency > 3 |
+                                            z.Response.Latency < -3 ~ 1, TRUE ~ 0))
+subset(test,
+       out.Response.Latency == '1',
+       select = c(ID:out.Response.Latency))
+currentDataset.out <-
+  subset(test,
+         out.Response.Latency == '1',
+         select = c(ID:out.Response.Latency))
+currentDataset.out$ID
+
+
+test <- filter(test, out.Response.Latency == '0')
+
+
+
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8d.pdf",
+    width = 1.5,
+    height = 1.2)
+
+ggplot(test, aes(x = ERP_Latency, y = Response.Latency, color = Block)) +
+  geom_point(aes(colour = Block), size = 0.5, show.legend = FALSE) +
+  theme_bw() +
+  geom_smooth(
+    method = "lm",
+    alpha = 0.3,
+    color = "black",
+    size = 0.5
+  ) +
+  scale_color_manual(values = c("#00A087B2", "#3C5488B2")) +
+  scale_fill_manual(values = c("#00A087B2")) +
+  theme(
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 6,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 9.5)
+  ) +   ylab("Response Latency") +   xlab("ERP Latency")
+dev.off()
+#AllDat <-na.omit(AllDat)
+
+pcor.test(test$ERP_Latency, test$Response.Latency, test$blk, method = "spearman")
+CorrDat <- filter(test, Block == "Normal")
+cor.test(CorrDat$ERP_Latency, CorrDat$Response.Latency, method = "spearman")
+CorrDat <- filter(test, Block == "Enhanced")
+cor.test(CorrDat$ERP_Latency, CorrDat$Response.Latency, method = "spearman")
+```
+
+
+## Figure 8e
+```{r}
+
+#Figure 8e
+ERP <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig8e.csv")
+#fit               <- lmer(dat680~ Block+Sex+(1|ID), data = ERP)
+#tmp.rs       <- anova(fit)
+#print(tmp.rs)
+ERP_Orig <- filter(ERP, Group == "Original")
+ERP_Rep <- filter(ERP, Group == "Replication")
+ERP_long <-
+  gather(ERP, TIME, ERPValue, dat400:dat680, factor_key = TRUE)
+ERP_long$Block <- relevel(factor(ERP_long$Block), "Normal")
+ERP_long1 <- filter(ERP_long, TIME == "dat400")
+
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 400-440 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e1.pdf",
+    width = 2,
+    height = 1.4)
+
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+
+ERP_long1 <- filter(ERP_long1, ID != "AW090" & ID != "AB765")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+
+
+ERP_long1 <- filter(ERP_long, TIME == "dat440")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 440-480 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e2.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+# Calculate Stats after removing Outlliers
+ERP_long1 <- filter(ERP_long1, ID != "AB765")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+
+
+ERP_long1 <- filter(ERP_long, TIME == "dat480")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 480-520 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e3.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+ERP_long1 <-
+  filter(ERP_long1, ID != "AB765" & ID != "BL991" & ID != "BC938")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+
+ERP_long1 <- filter(ERP_long, TIME == "dat520")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 520-560 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e4.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+ERP_long1 <- filter(ERP_long1, ID != "BL991" & ID != "BC938")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+
+ERP_long1 <- filter(ERP_long, TIME == "dat560")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 560-600 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e5.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+ERP_long1 <- filter(ERP_long1, ID != "AZ908")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+
+
+ERP_long1 <- filter(ERP_long, TIME == "dat600")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 600-640 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e6.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+ERP_long1 <- filter(ERP_long1, ID != "BL991" & ID != "AZ908")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+
+ERP_long1 <- filter(ERP_long, TIME == "dat640")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 640-680 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e7.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+
+# Calculate Stats after removing Outlliers
+ERP_long1 <- filter(ERP_long1,  ID != "AZ474")
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+
+ERP_long1 <- filter(ERP_long, TIME == "dat680")
+p <- ggerrorplot(
+  ERP_long1,
+  x = "Block",
+  y = "ERPValue",
+  color = "Block",
+  add = "mean",
+  add.params = list(size = 0.15),
+  facet.by = "Group",
+  palette = c("#3C5488B2", "#00A087B2"),
+  ylim = c(0, 6),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  ylab = "ERP 680-720 ms",
+  width = 0.1,
+  size = 0.2
+)
+stat.test <- ERP_long1 %>%
+  group_by(Group) %>%
+  t_test(ERPValue ~ Block, paire = TRUE) %>%
+  mutate(y.position = 5.2) %>%
+  add_significance("p")
+stat.test
+pdf(file = "//Users/ahmadmayeli/Documents/Capsule/FinalExcelSheets/Fig8e8.pdf",
+    width = 2,
+    height = 1.4)
+p + stat_pvalue_manual(
+  stat.test,
+  label =  "p.signif",
+  vjust = 0,
+  bracket.nudge.y = 0.3,
+  tip.length = 0.01,
+  label.size = 6
+) +
+  theme(text = element_text(size = 6), legend.position = "none")
+dev.off()
+# Calculate Stats after removing Outlliers
+ERP_long1_Rep <- filter(ERP_long1, Group == "Replication")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Rep,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Rep, paired = TRUE)
+
+ERP_long1_Orig <- filter(ERP_long1, Group == "Original")
+# Calculating stats
+cohens_d(ERPValue ~ Block,
+         data = ERP_long1_Orig,
+         paired = TRUE,
+         ci = TRUE)
+t.test(ERPValue ~ Block, data = ERP_long1_Orig, paired = TRUE)
+```
+
+## FigureS1
+```{r}
+
+#FigureS1
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1Cz.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("Cz Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+G
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1CP1.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("CP1 Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+
+#scale_y_reverse()
+G
+
+
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1CP2.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("CP2 Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+G
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1Pz.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("Pz Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+G
+
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1POz.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("POz Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+
+G
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1O1.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("O1 Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+
+G
+
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1Oz.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("Oz Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+G
+
+
+
+Dat <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS1O2.csv")
+long_Dat <- gather(Dat, Subject, Amplitude, Subj1:Subj40)
+#long_Dat$Amplitude=-long_Dat$Amplitude
+levCat.plot <- ggplot(long_Dat, aes(Time, Amplitude)) +
+  theme_classic() + scale_color_manual(values = c('Enhanced' = '#00A087B2', 'Normal' =
+                                                    '#3C5488B2'))
+G <- levCat.plot +
+  theme(
+    text = element_text(size = 28),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "ribbon",
+    size = 1,
+    aes(fill = Block),
+    alpha = 0.3
+  ) +
+  guides(fill = "none") +
+  stat_summary(
+    fun = mean,
+    geom = "line",
+    size = 1,
+    aes(colour = Block),
+    show.legend = FALSE
+  ) +
+  labs(x = "Time (ms)",
+       y = expression(paste("O2 Amplitude (", mu, "V)")),
+       colour = "") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 400, linetype = "dashed") +
+  geom_vline(xintercept = 720, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") +  scale_fill_manual(values = c('Enhanced' =
+                                                                                    '#00A087B2', 'Normal' = '#3C5488B2')) + expand_limits(y = c(-1.5, 6.5))
+
+G
+
+```
+
+## Table S5
+```{r}
+#####Table S5
+ Intensity <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/TableS1-1.csv")
+
+fit               <- lmer(Intensity~ Sex+Time+Time*Sex+(1|ID), data = Intensity)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+Intensity <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/TableS1-2.csv")
+fit               <- lmer(Intensity~ Sex+Time+Time*Sex+(1|ID), data = Intensity)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+   Intensity <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/TableS1-3.csv")
+fit               <- lmer(Intensity~ Sex+Time+Time*Sex+(1|ID), data = Intensity)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+
+
+
+  Intensity <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/TableS1-4.csv")
+fit               <- lmer(Intensity~ Sex+Time+Time*Sex+(1|ID), data = Intensity)
+
+tmp.rs       <- anova(fit)
+print(tmp.rs)
+```
+
+## Figure S5 a
+```{r}
+# Figure S5 a
+
+AllDat <-
+  read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig2c-d.csv')
+AllDat <- na.omit(AllDat)
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.ERP_Latency = (ERP_Latency - mean(ERP_Latency)) / sd(ERP_Latency)) %>%
+  mutate(out.ERP_Latency = case_when(z.ERP_Latency > 3 |
+                                       z.ERP_Latency < -3 ~ 1, TRUE ~ 0))
+subset(test, out.ERP_Latency == '1', select = c(ID:out.ERP_Latency))
+currentDataset.out <-
+  subset(test, out.ERP_Latency == '1', select = c(ID:out.ERP_Latency))
+currentDataset.out$ID
+
+test <- filter(test, out.ERP_Latency == '0')
+# No Outliers detected
+#AllDat <-filter(AllDat, ID != currentDataset.out$ID)
+
+test <- AllDat %>%
+  #group_by(Group) %>%
+  mutate(z.Average.ERP.400.720ms = (Average.ERP.400.720ms - mean(Average.ERP.400.720ms)) / sd(Average.ERP.400.720ms)) %>%
+  mutate(
+    out.Average.ERP.400.720ms = case_when(
+      z.Average.ERP.400.720ms > 3 |
+        z.Average.ERP.400.720ms < -3 ~ 1,
+      TRUE ~ 0
+    )
+  )
+subset(test,
+       out.Average.ERP.400.720ms == '1',
+       select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out <-
+  subset(test,
+         out.Average.ERP.400.720ms == '1',
+         select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out$ID
+
+test <- filter(test, out.Average.ERP.400.720ms == '0')
+
+ggplot(test,
+       aes(x = Normalized.A.Prime, y = Average.ERP.400.720ms, color = Block)) +
+  geom_point(size = 4) + theme(legend.position = "none") + theme_bw() +
+  geom_smooth(
+    aes(color = Block, fill = Block),
+    formula = y ~ x,
+    method = "lm",
+    alpha = 0.3
+  ) +
+  scale_color_manual(values = c("#00A087B2", "#3C5488B2")) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  theme(
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 18,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 18,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 22,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 22,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 20)
+  ) +   ylab("Average ERP 400-720 ms") +   xlab("Normalized A-Prime")
+
+
+pcor.test(test$Normalized.A.Prime,
+          test$Average.ERP.400.720ms,
+          test$blk,
+          method = "spearman")
+CorrDat <- filter(test, Block == "Normal")
+cor.test(CorrDat$Normalized.A.Prime,
+         CorrDat$Average.ERP.400.720ms,
+         method = "spearman")
+CorrDat <- filter(test, Block == "Enhanced")
+cor.test(CorrDat$Normalized.A.Prime,
+         CorrDat$Average.ERP.400.720ms,
+         method = "spearman")
+
+
+
+# Figure S5 b
+# there was no outlier based on Figure 2d detection
+ggplot(AllDat, aes(x = ERP_Latency, y = Response.Latency, color = Block)) +
+  geom_point(size = 4) + theme(legend.position = "none") + theme_bw() +
+  geom_smooth(
+    aes(color = Block, fill = Block),
+    formula = y ~ x,
+    method = "lm",
+    alpha = 0.3
+  ) +
+  scale_color_manual(values = c("#00A087B2", "#3C5488B2")) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  theme(
+    axis.text.x = element_text(
+      color = "grey20",
+      size = 18,
+      angle = 0,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    axis.text.y = element_text(
+      color = "grey20",
+      size = 18,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.x = element_text(
+      color = "grey20",
+      size = 22,
+      angle = 0,
+      hjust = .5,
+      vjust = 0.5,
+      face = "plain"
+    ),
+    axis.title.y = element_text(
+      color = "grey20",
+      size = 22,
+      angle = 90,
+      hjust = .5,
+      vjust = .5,
+      face = "plain"
+    ),
+    plot.title = element_text(hjust = 0.5, size = 20)
+  ) +   ylab("Response Latency") +   xlab("ERP Latency")
+
+pcor.test(AllDat$ERP_Latency,
+          AllDat$Response.Latency,
+          AllDat$blk,
+          method = "spearman")
+CorrDat <- filter(AllDat, Block == "Normal")
+cor.test(CorrDat$ERP_Latency, CorrDat$Response.Latency, method = "spearman")
+CorrDat <- filter(AllDat, Block == "Enhanced")
+cor.test(CorrDat$ERP_Latency, CorrDat$Response.Latency, method = "spearman")
+```
+
+## Figure S11a
+```{r}
+# Figure S11a
+AllDat <- read.csv('/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/Fig8c-d.csv')
+test <- AllDat %>% 
+  #group_by(Group) %>% 
+  mutate(z.Average.ERP.400.720ms = (Average.ERP.400.720ms - mean(Average.ERP.400.720ms)) / sd(Average.ERP.400.720ms)) %>%
+  mutate(out.Average.ERP.400.720ms = case_when(z.Average.ERP.400.720ms > 3 | z.Average.ERP.400.720ms < -3 ~ 1, TRUE ~ 0))
+subset(test, out.Average.ERP.400.720ms=='1', select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out <- subset(test, out.Average.ERP.400.720ms=='1', select = c(ID:out.Average.ERP.400.720ms))
+currentDataset.out$ID
+
+test <-filter(test, out.Average.ERP.400.720ms == '0')
+
+
+test <- test %>% 
+  #group_by(Group) %>% 
+  mutate(z.Normalized.A.Prime = (Normalized.A.Prime - mean(Normalized.A.Prime)) / sd(Normalized.A.Prime)) %>%
+  mutate(out.Normalized.A.Prime = case_when(z.Normalized.A.Prime > 3 | z.Normalized.A.Prime < -3 ~ 1, TRUE ~ 0))
+subset(test, out.Normalized.A.Prime=='1', select = c(ID:out.Normalized.A.Prime))
+currentDataset.out <- subset(test, out.Normalized.A.Prime=='1', select = c(ID:out.Normalized.A.Prime))
+currentDataset.out$ID
+
+test <-filter(test, out.Normalized.A.Prime == '0')
+
+ggplot(test, aes(x=Normalized.A.Prime, y=Average.ERP.400.720ms, color=Block)) + 
+        geom_point( size = 4) + theme(legend.position = "none")+theme_bw()+
+        geom_smooth(aes(color = Block, fill = Block), formula = y ~ x, method = "lm",alpha = 0.3)+
+        scale_color_manual(values = c( "#00A087B2", "#3C5488B2"))+
+        scale_fill_manual(values = c("#00A087B2", "#3C5488B2"))+ 
+        theme(axis.text.x = element_text(color = "grey20", size = 18, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+              axis.text.y = element_text(color = "grey20", size = 18, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),  
+              axis.title.x = element_text(color = "grey20", size = 22, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),
+              axis.title.y = element_text(color = "grey20", size = 22, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+              plot.title = element_text(hjust = 0.5, size = 20)) +   ylab("Average ERP 400-720 ms")+   xlab("Normalized A-Prime")
+
+pcor.test(test$Normalized.A.Prime,test$Average.ERP.400.720ms,test$blk,method="spearman")
+CorrDat <-filter(test, Block == "Normal")
+cor.test(CorrDat$Normalized.A.Prime,CorrDat$Average.ERP.400.720ms,method="spearman")
+CorrDat <-filter(test, Block == "Enhanced")
+cor.test(CorrDat$Normalized.A.Prime,CorrDat$Average.ERP.400.720ms,method="spearman")
+
+
+# Figure S11 B
+
+
+test <- AllDat %>% 
+  #group_by(Group) %>% 
+  mutate(z.ERP_Latency = (ERP_Latency - mean(ERP_Latency)) / sd(ERP_Latency)) %>%
+  mutate(out.ERP_Latency = case_when(z.ERP_Latency > 3 | z.ERP_Latency < -3 ~ 1, TRUE ~ 0))
+subset(test, out.ERP_Latency=='1', select = c(ID:out.ERP_Latency))
+currentDataset.out <- subset(test, out.ERP_Latency=='1', select = c(ID:out.ERP_Latency))
+currentDataset.out$ID
+
+
+test <- AllDat %>% 
+  #group_by(Group) %>% 
+  mutate(z.Response.Latency = (Response.Latency - mean(Response.Latency)) / sd(Response.Latency)) %>%
+  mutate(out.Response.Latency = case_when(z.Response.Latency > 3 | z.Response.Latency < -3 ~ 1, TRUE ~ 0))
+subset(test, out.Response.Latency=='1', select = c(ID:out.Response.Latency))
+currentDataset.out <- subset(test, out.Response.Latency=='1', select = c(ID:out.Response.Latency))
+currentDataset.out$ID
+
+
+test <- filter(test,out.Response.Latency=='0')
+
+
+
+ggplot(test, aes(x=ERP_Latency, y=Response.Latency, color=Block)) + 
+        geom_point( size = 4) + theme(legend.position = "none")+theme_bw()+
+        geom_smooth(aes(color = Block, fill = Block), formula = y ~ x, method = "lm",alpha = 0.3)+
+        scale_color_manual(values = c("#00A087B2", "#3C5488B2"))+
+        scale_fill_manual(values = c("#00A087B2", "#3C5488B2"))+ 
+        theme(axis.text.x = element_text(color = "grey20", size = 18, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+              axis.text.y = element_text(color = "grey20", size = 18, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),  
+              axis.title.x = element_text(color = "grey20", size = 22, angle = 0, hjust = .5, vjust = 0.5, face = "plain"),
+              axis.title.y = element_text(color = "grey20", size = 22, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+              plot.title = element_text(hjust = 0.5, size = 20))+   ylab("Response Latency")+   xlab("ERP Latency")
+#test <-na.omit(test)
+
+pcor.test(test$ERP_Latency,test$Response.Latency,test$blk,method="spearman")
+CorrDat <-filter(test, Block == "Normal")
+cor.test(CorrDat$ERP_Latency,CorrDat$Response.Latency,method="spearman")
+CorrDat <-filter(test, Block == "Enhanced")
+cor.test(CorrDat$ERP_Latency,CorrDat$Response.Latency,method="spearman")
+```              
+              
+              
+## Detecting Outliers for ERP             
+```{r}
+
+# Detecting Outliers for ERP
+ERP <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/TableS9.csv")
+
+ERP_Orig <-filter(ERP, Group == "Original")
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat400 = (dat400 - mean(dat400)) / sd(dat400)) %>%
+  mutate(out.dat400  = case_when(z.dat400  > 3 | z.dat400  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat400=='1', select = c(ID:out.dat400))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat440 = (dat440 - mean(dat440)) / sd(dat440)) %>%
+  mutate(out.dat440  = case_when(z.dat440  > 3 | z.dat440  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat440=='1', select = c(ID:out.dat440))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat480 = (dat480 - mean(dat480)) / sd(dat480)) %>%
+  mutate(out.dat480  = case_when(z.dat480  > 3 | z.dat480  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat480=='1', select = c(ID:out.dat480))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat520 = (dat520 - mean(dat520)) / sd(dat520)) %>%
+  mutate(out.dat520  = case_when(z.dat520  > 3 | z.dat520  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat520=='1', select = c(ID:out.dat520))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat560 = (dat560 - mean(dat560)) / sd(dat560)) %>%
+  mutate(out.dat560  = case_when(z.dat560  > 3 | z.dat560  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat560=='1', select = c(ID:out.dat560))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat600 = (dat600 - mean(dat600)) / sd(dat600)) %>%
+  mutate(out.dat600  = case_when(z.dat600  > 3 | z.dat600  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat600=='1', select = c(ID:out.dat600))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat640 = (dat640 - mean(dat640)) / sd(dat640)) %>%
+  mutate(out.dat640  = case_when(z.dat640  > 3 | z.dat640  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat640=='1', select = c(ID:out.dat640))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+test <- ERP_Orig %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat680 = (dat680 - mean(dat680)) / sd(dat680)) %>%
+  mutate(out.dat680  = case_when(z.dat680  > 3 | z.dat680  < -3 ~ 1, TRUE ~ 0))
+ERP_Orig.out <- subset(test, out.dat680=='1', select = c(ID:out.dat680))
+ERP_Orig$Block <- relevel(factor(ERP_Orig$Block),"Normal")
+ERP_Orig.out$ID
+ERP_Orig.out
+
+ERP_Rep <-filter(ERP, Group == "Replication")
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat400 = (dat400 - mean(dat400)) / sd(dat400)) %>%
+  mutate(out.dat400  = case_when(z.dat400  > 3 | z.dat400  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat400=='1', select = c(ID:out.dat400))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat440 = (dat440 - mean(dat440)) / sd(dat440)) %>%
+  mutate(out.dat440  = case_when(z.dat440  > 3 | z.dat440  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat440=='1', select = c(ID:out.dat440))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat480 = (dat480 - mean(dat480)) / sd(dat480)) %>%
+  mutate(out.dat480  = case_when(z.dat480  > 3 | z.dat480  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat480=='1', select = c(ID:out.dat480))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat520 = (dat520 - mean(dat520)) / sd(dat520)) %>%
+  mutate(out.dat520  = case_when(z.dat520  > 3 | z.dat520  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat520=='1', select = c(ID:out.dat520))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat560 = (dat560 - mean(dat560)) / sd(dat560)) %>%
+  mutate(out.dat560  = case_when(z.dat560  > 3 | z.dat560  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat560=='1', select = c(ID:out.dat560))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat600 = (dat600 - mean(dat600)) / sd(dat600)) %>%
+  mutate(out.dat600  = case_when(z.dat600  > 3 | z.dat600  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat600=='1', select = c(ID:out.dat600))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat640 = (dat640 - mean(dat640)) / sd(dat640)) %>%
+  mutate(out.dat640  = case_when(z.dat640  > 3 | z.dat640  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat640=='1', select = c(ID:out.dat640))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+
+
+test <- ERP_Rep %>% 
+  #group_by(Group) %>% 
+  mutate(z.dat680 = (dat680 - mean(dat680)) / sd(dat680)) %>%
+  mutate(out.dat680  = case_when(z.dat680  > 3 | z.dat680  < -3 ~ 1, TRUE ~ 0))
+ERP_Rep.out <- subset(test, out.dat680=='1', select = c(ID:out.dat680))
+ERP_Rep$Block <- relevel(factor(ERP_Rep$Block),"Normal")
+ERP_Rep.out$ID
+ERP_Rep.out
+```
+
+## Figure S9a
+```{r}
+# Figure S9a
+APrime_All <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/figs9a.csv")
+APrime_All <-na.omit(APrime_All)
+#cohens_d(A_Prime ~ Block, data = APrime_All, paired = TRUE, ci = TRUE)
+#t.test(A_Prime ~ Block, data = APrime_All, paired = TRUE)
+
+APrime_All$Block <- relevel(factor(APrime_All$Block),"Normal")
+APrime_All_F <- filter(APrime_All, Sex == "F")
+ggplot(APrime_All_F, aes(x= Block, y=A_Prime, linetype = factor(Group), fill = factor(Block))) +
+  geom_boxplot(aes(fill=Block)) + scale_fill_manual(name ="Block", values = c("#3C5488B2","#00A087B2")) + 
+  stat_compare_means(aes(group = Group),method = "t.test",
+                     paired = FALSE) +
+  geom_point(position=position_dodge(width=0.75),aes(group=Group))+theme_bw() +
+  theme(text = element_text(size=22))+
+  ylim(1.45, 3.31)+ ylab("Normalized A Prime")
+APrime_All_F_Normal <- filter(APrime_All_F, Block == "Normal")
+t.test(A_Prime ~ Group, data = APrime_All_F_Normal, paired = FALSE)
+
+APrime_All_F_Enhanced <- filter(APrime_All_F, Block == "Enhanced")
+t.test(A_Prime ~ Group, data = APrime_All_F_Enhanced, paired = FALSE)
+
+APrime1 <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/figs9a-1.csv")
+
+APrime <- filter(APrime_All, Group == "Original")
+#STDDelay <- read.csv("/Users/ahmadmayeli/Documents/Capsule/NatureComs_Resubmission_June20/Results_STD_Delay_21Subjects_NoOutlier.csv")
+
+APrime <- select(APrime, ID, Sex, A_Prime, Block)
+
+cohens_d(A_Prime ~ Block, data = APrime, paired = TRUE, ci = TRUE)
+APrime_NoNA <-filter(APrime, ID != "BL991" )
+
+t.test(A_Prime ~ Block, data = APrime_NoNA, paired = TRUE)
+
+APrime$Block <- relevel(factor(APrime$Block),"Normal")
+APrime.df<- APrime %>%
+  
+  tidyr::spread(Block, A_Prime) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Block", "A_Prime", 3:4)
+
+APrime.df$Block   <-as.factor(APrime.df$Block)
+
+APrime.df$isMale <-as.factor(APrime.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+APrime.df %>%
+  
+  ggplot(aes(relevel(factor(APrime$Block),"Normal"),A_Prime, fill=Block)) +
+  
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2"))+
+  
+  geom_point(aes(fill=Block,group=ID),size=2,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2"))+theme_bw() +
+  theme(text = element_text(size=14),legend.position = "none")+ylab('APrime')+
+  xlab("Block") + ylab("Normalized A Prime")+
+  ylim(1.45, 3.31)
+
+APrime <- filter(APrime, Sex == "F")
+
+
+APrime <- select(APrime, ID, Sex, A_Prime, Block)
+
+cohens_d(A_Prime ~ Block, data = APrime, paired = TRUE, ci = TRUE)
+APrime_NoNA <-filter(APrime, ID != "BL991" )
+
+t.test(A_Prime ~ Block, data = APrime_NoNA, paired = TRUE)
+
+APrime$Block <- relevel(factor(APrime$Block),"Normal")
+APrime.df<- APrime %>%
+  
+  tidyr::spread(Block, A_Prime) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Block", "A_Prime", 3:4)
+
+APrime.df$Block   <-as.factor(APrime.df$Block)
+
+APrime.df$isMale <-as.factor(APrime.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+APrime.df %>%
+  
+  ggplot(aes(relevel(factor(APrime$Block),"Normal"),A_Prime, fill=Block)) +
+  
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2"))+
+  
+  geom_point(aes(fill=Block,group=ID),size=2,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2"))+theme_bw() +
+  theme(text = element_text(size=14),legend.position = "none")+ylab('APrime')+
+  xlab("Block") + ylab("Normalized A Prime")+
+  ylim(1.45, 3.31)
+
+
+APrime <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/figs9a-1.csv")
+APrime <- select(APrime, ID, Sex, A_Prime, Block)
+
+cohens_d(A_Prime ~ Block, data = APrime, paired = TRUE, ci = TRUE)
+APrime_NoNA <-filter(APrime, ID != "BL991" )
+
+t.test(A_Prime ~ Block, data = APrime_NoNA, paired = TRUE)
+
+APrime$Block <- relevel(factor(APrime$Block),"Normal")
+
+APrime.df<- APrime %>%
+  
+  tidyr::spread(Block, A_Prime) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Block", "A_Prime", 3:4)
+
+APrime.df$Block   <-as.factor(APrime.df$Block)
+
+APrime.df$isMale <-as.factor(APrime.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+APrime.df %>%
+  
+  ggplot(aes(relevel(factor(APrime$Block),"Normal"),A_Prime, fill=Block)) +
+  
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2"))+
+  
+  geom_point(aes(fill=Block,group=ID),size=2,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2"))+theme_bw() +
+  theme(text = element_text(size=14),legend.position = "none")+ylab('APrime')+
+  xlab("Block") + ylab("Normalized A Prime")+
+  ylim(1.45, 3.31)
+```
+
+## Figure S9b
+```{r}
+# Figure S9b
+AverageDelay_All <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/figs9b.csv")
+AverageDelay_All_F <- filter(AverageDelay_All, Sex == "F")
+AverageDelay_All_F$Block <-
+  relevel(factor(AverageDelay_All_F$Block), "Normal")
+ggplot(
+  AverageDelay_All_F,
+  aes(
+    x = Block,
+    y = Response_Latency,
+    linetype = factor(Group),
+    fill = factor(Block)
+  )
+) +
+  geom_boxplot(aes(fill = Block)) + scale_fill_manual(name = "Block", values = c("#3C5488B2", "#00A087B2")) +
+  stat_compare_means(aes(group = Group), method = "t.test",
+                     paired = FALSE) +
+  geom_point(position = position_dodge(width = 0.75), aes(group = Group)) +
+  theme_bw() +
+  theme(text = element_text(size = 22)) + ylab("Average Response Latency") +
+  ylim(0.45, 1.89)
+
+AverageDelay_All_F_Normal <-
+  filter(AverageDelay_All_F, Block == "Normal")
+t.test(Response_Latency ~ Group, data = AverageDelay_All_F_Normal, paired = FALSE)
+
+AverageDelay_All_F_Enhanced <-
+  filter(AverageDelay_All_F, Block == "Enhanced")
+t.test(Response_Latency ~ Group, data = AverageDelay_All_F_Enhanced, paired = FALSE)
+
+AverageDelay <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/figs9b-1.csv")
+
+AverageDelay <- filter(AverageDelay_All, Group == "Original")
+
+
+AverageDelay <-
+  select(AverageDelay, ID, Sex, Response_Latency, Block)
+
+AverageDelay_NoNA <-
+  filter(
+    AverageDelay,
+    ID != "AY074" &
+      ID != "BM370" &
+      ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237"
+  )
+
+cohens_d(
+  Response_Latency ~ Block,
+  data = AverageDelay_NoNA,
+  paired = TRUE,
+  ci = TRUE
+)
+t.test(Response_Latency ~ Block, data = AverageDelay_NoNA, paired = TRUE)
+
+
+AverageDelay$Block <- relevel(factor(AverageDelay$Block), "Normal")
+AverageDelay.df <- AverageDelay %>%
+  
+  tidyr::spread(Block, Response_Latency) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Block", "Response_Latency", 3:4)
+
+AverageDelay.df$Block   <- as.factor(AverageDelay.df$Block)
+
+AverageDelay.df$isMale <- as.factor(AverageDelay.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+AverageDelay.df %>%
+  
+  ggplot(aes(relevel(factor(AverageDelay$Block), "Normal"), Response_Latency, fill =
+               Block)) +
+  
+  geom_boxplot(alpha = 0.9) +
+  
+  geom_line(aes(group = ID), color = "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 2,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  theme(text = element_text(size = 16), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("Average Response Latency") +
+  ylim(0.45, 1.89)
+
+
+AverageDelay <- filter(AverageDelay, Sex == "F")
+
+
+AverageDelay <-
+  select(AverageDelay, ID, Sex, Response_Latency, Block)
+
+AverageDelay_NoNA <-
+  filter(
+    AverageDelay,
+    ID != "AY074" &
+      ID != "BM370" &
+      ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237"
+  )
+
+cohens_d(
+  Response_Latency ~ Block,
+  data = AverageDelay_NoNA,
+  paired = TRUE,
+  ci = TRUE
+)
+t.test(Response_Latency ~ Block, data = AverageDelay_NoNA, paired = TRUE)
+
+
+AverageDelay$Block <- relevel(factor(AverageDelay$Block), "Normal")
+AverageDelay.df <- AverageDelay %>%
+  
+  tidyr::spread(Block, Response_Latency) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Block", "Response_Latency", 3:4)
+
+AverageDelay.df$Block   <- as.factor(AverageDelay.df$Block)
+
+AverageDelay.df$isMale <- as.factor(AverageDelay.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+AverageDelay.df %>%
+  
+  ggplot(aes(relevel(factor(AverageDelay$Block), "Normal"), Response_Latency, fill =
+               Block)) +
+  
+  geom_boxplot(alpha = 0.9) +
+  
+  geom_line(aes(group = ID), color = "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 2,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  theme(text = element_text(size = 16), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("Average Response Latency") +
+  ylim(0.45, 1.89)
+
+
+AverageDelay <- filter(AverageDelay_All, Group == "Replication")
+
+
+AverageDelay <-
+  select(AverageDelay, ID, Sex, Response_Latency, Block)
+
+AverageDelay_NoNA <-
+  filter(
+    AverageDelay,
+    ID != "AY074" &
+      ID != "BM370" &
+      ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237"
+  )
+
+cohens_d(
+  Response_Latency ~ Block,
+  data = AverageDelay_NoNA,
+  paired = TRUE,
+  ci = TRUE
+)
+t.test(Response_Latency ~ Block, data = AverageDelay_NoNA, paired = TRUE)
+
+
+AverageDelay$Block <- relevel(factor(AverageDelay$Block), "Normal")
+AverageDelay.df <- AverageDelay %>%
+  
+  tidyr::spread(Block, Response_Latency) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Block", "Response_Latency", 3:4)
+
+AverageDelay.df$Block   <- as.factor(AverageDelay.df$Block)
+
+AverageDelay.df$isMale <- as.factor(AverageDelay.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+AverageDelay.df %>%
+  
+  ggplot(aes(relevel(factor(AverageDelay$Block), "Normal"), Response_Latency, fill =
+               Block)) +
+  
+  geom_boxplot(alpha = 0.9) +
+  
+  geom_line(aes(group = ID), color = "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 2,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  theme(text = element_text(size = 16), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("Average Response Latency") +
+  ylim(0.45, 1.89)
+```
+
+## Figure S9c
+```{r}
+# Figure S9c
+STDDelay_All <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/figs9c.csv")
+
+STDDelay_All_F <- filter(STDDelay_All, Sex == "F")
+STDDelay_All_F$Block <-
+  relevel(factor(STDDelay_All_F$Block), "Normal")
+ggplot(
+  STDDelay_All_F,
+  aes(
+    x = Block,
+    y = Response_Latency_STD,
+    linetype = factor(Group),
+    fill = factor(Block)
+  )
+) +
+  geom_boxplot(aes(fill = Block)) + scale_fill_manual(name = "Block", values = c("#3C5488B2", "#00A087B2")) +
+  stat_compare_means(aes(group = Group), method = "t.test",
+                     paired = FALSE) +
+  geom_point(position = position_dodge(width = 0.75), aes(group = Group)) +
+  theme_bw() +
+  theme(text = element_text(size = 22)) + ylab("STD Response Latency") +
+  ylim(0.05, 0.8)
+
+STDDelay_All_F_Normal <- filter(STDDelay_All_F, Block == "Normal")
+t.test(
+  Response_Latency_STD ~ Group,
+  data = STDDelay_All_F_Normal,
+  paired = FALSE,
+  var.equal = TRUE
+)
+
+STDDelay_All_F_Enhanced <-
+  filter(STDDelay_All_F, Block == "Enhanced")
+t.test(Response_Latency_STD ~ Group,
+       data = STDDelay_All_F_Enhanced,
+       paired = FALSE)
+
+STDDelay <- filter(STDDelay_All, Group == "Original")
+
+
+STDDelay <- select(STDDelay, ID, Sex, Response_Latency_STD, Block)
+#cohens_d(Response_Latency_STD ~ Block, data = STDDelay, paired = TRUE, ci = TRUE)
+STDDelay_NoNA <-
+  filter(
+    STDDelay,
+    ID != "AY074" &
+      ID != "BN299" &
+      ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237"
+  )
+
+t.test(Response_Latency_STD ~ Block,
+       data = STDDelay_NoNA,
+       paired = TRUE)
+
+STDDelay$Block <- relevel(factor(STDDelay$Block), "Normal")
+STDDelay.df <- STDDelay %>%
+  
+  tidyr::spread(Block, Response_Latency_STD) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Block", "Response_Latency_STD", 3:4)
+
+STDDelay.df$Block   <- as.factor(STDDelay.df$Block)
+
+STDDelay.df$isMale <- as.factor(STDDelay.df$isMale)
+
+#mypal = pal_npg("nrc", alpha = 0.9)(12)
+STDDelay.df %>%
+  
+  ggplot(aes(relevel(factor(STDDelay$Block), "Normal"), Response_Latency_STD, fill =
+               Block)) +
+  
+  geom_boxplot(alpha = 0.9) +
+  
+  geom_line(aes(group = ID), color = "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 2,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  ylab('Response Delay') +
+  theme(text = element_text(size = 16), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("STD Response Latency") +
+  ylim(0.05, 0.8)
+
+
+STDDelay <- filter(STDDelay, Sex == "F")
+
+
+STDDelay <- select(STDDelay, ID, Sex, Response_Latency_STD, Block)
+#cohens_d(Response_Latency_STD ~ Block, data = STDDelay, paired = TRUE, ci = TRUE)
+STDDelay_NoNA <-
+  filter(
+    STDDelay,
+    ID != "AY074" &
+      ID != "BN299" &
+      ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237"
+  )
+
+t.test(Response_Latency_STD ~ Block,
+       data = STDDelay_NoNA,
+       paired = TRUE)
+
+STDDelay$Block <- relevel(factor(STDDelay$Block), "Normal")
+STDDelay.df <- STDDelay %>%
+  
+  tidyr::spread(Block, Response_Latency_STD) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Block", "Response_Latency_STD", 3:4)
+
+STDDelay.df$Block   <- as.factor(STDDelay.df$Block)
+
+STDDelay.df$isMale <- as.factor(STDDelay.df$isMale)
+
+#mypal = pal_npg("nrc", alpha = 0.9)(12)
+STDDelay.df %>%
+  
+  ggplot(aes(relevel(factor(STDDelay$Block), "Normal"), Response_Latency_STD, fill =
+               Block)) +
+  
+  geom_boxplot(alpha = 0.9) +
+  
+  geom_line(aes(group = ID), color = "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 2,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  ylab('Response Delay') +
+  theme(text = element_text(size = 16), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("STD Response Latency") +
+  ylim(0.05, 0.8)
+
+
+STDDelay <- filter(STDDelay_All, Group == "Replication")
+
+STDDelay <- select(STDDelay, ID, Sex, Response_Latency_STD, Block)
+
+#cohens_d(Response_Latency_STD ~ Block, data = STDDelay, paired = TRUE, ci = TRUE)
+STDDelay_NoNA <-
+  filter(
+    STDDelay,
+    ID != "AY074" &
+      ID != "BN299" &
+      ID != "BK323" & ID != "BK413" & ID != "AL752" & ID != "BN237"
+  )
+t.test(Response_Latency_STD ~ Block,
+       data = STDDelay_NoNA,
+       paired = TRUE)
+
+STDDelay$Block <- relevel(factor(STDDelay$Block), "Normal")
+STDDelay.df <- STDDelay %>%
+  
+  tidyr::spread(Block, Response_Latency_STD) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Block", "Response_Latency_STD", 3:4)
+
+STDDelay.df$Block   <- as.factor(STDDelay.df$Block)
+
+STDDelay.df$isMale <- as.factor(STDDelay.df$isMale)
+
+#mypal = pal_npg("nrc", alpha = 0.9)(12)
+STDDelay.df %>%
+  
+  ggplot(aes(relevel(factor(STDDelay$Block), "Normal"), Response_Latency_STD, fill =
+               Block)) +
+  
+  geom_boxplot(alpha = 0.9) +
+  
+  geom_line(aes(group = ID), color = "grey48") +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#00A087B2", "#3C5488B2")) +
+  
+  geom_point(
+    aes(fill = Block, group = ID),
+    size = 2,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() +
+  ylab('Response Delay') +
+  theme(text = element_text(size = 16), legend.position = "none") + ylab('Response Delay') +
+  xlab("Block") + ylab("STD Response Latency") +
+  ylim(0.05, 0.8)
+
+```
+
+
+## Figure S10 A
+```{r}
+
+# Figure S10 A
+Breath_All <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS10a.csv")
+p <- ggerrorplot(
+  Breath_All,
+  x = "Time",
+  y = "Intensity",
+  color = "Time",
+  facet.by = "Group",
+  ylim = c(10, 40),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  palette = c("#7E6148B2", "#DC0000B2"),
+  ylab = "Breath Intensity",
+  width = 0.2,
+  size = 1
+)
+p + stat_compare_means(method = "t.test",
+                       paired = TRUE,
+                       label.y = 35) +
+  theme(text = element_text(size = 20), legend.position = "none")
+
+
+Breath_All$Time <- relevel(factor(Breath_All$Time), "Pre")
+p <- ggerrorplot(
+  Breath_All,
+  x = "Time",
+  y = "Intensity",
+  color = "Time",
+  facet.by = "Group",
+  ylim = c(0, 50),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  palette = c("#7E6148B2", "#DC0000B2"),
+  ylab = "Breath Intensity"
+)
+p + stat_compare_means(method = "t.test",
+                       paired = TRUE,
+                       label.y = 40)
+Breath_All_F <- filter(Breath_All, Sex == "F")
+Breath_All_F$Time <- relevel(factor(Breath_All_F$Time), "Pre")
+ggplot(Breath_All_F,
+       aes(
+         x = Time,
+         y = Intensity,
+         linetype = factor(Group),
+         fill = factor(Time)
+       )) +
+  geom_boxplot(aes(fill = Time)) + scale_fill_manual(name = "Time", values = c("#7E6148B2", "#DC0000B2")) +
+  stat_compare_means(aes(group = Group), method = "t.test",
+                     paired = FALSE) +
+  geom_point(position = position_dodge(width = 0.75), aes(group = Group)) +
+  theme_bw() +
+  theme(text = element_text(size = 14))
+
+Breath <- filter(Breath_All, Group == "Original")
+
+Breath <- select(Breath, ID, Sex, Intensity, Time)
+Breath.df <- Breath %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Breath.df$Time   <- as.factor(Breath.df$Time)
+
+Breath.df$isMale <- as.factor(Breath.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Breath.df, aes(relevel(factor(Breath$Time), "Pre"), Intensity, fill =
+                        Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Breath Intensity') + xlab('Time') +
+  ylim(-2, 93)
+
+
+Breath <- filter(Breath_All, Sex == "F")
+
+Breath <- select(Breath, ID, Sex, Intensity, Time)
+Breath.df <- Breath %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Breath.df$Time   <- as.factor(Breath.df$Time)
+
+Breath.df$isMale <- as.factor(Breath.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Breath.df, aes(relevel(factor(Breath$Time), "Pre"), Intensity, fill =
+                        Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Breath Intensity') + xlab('Time') +
+  ylim(-2, 93)
+
+
+Breath <- filter(Breath_All, Group == "Replication")
+
+Breath <- select(Breath, ID, Sex, Intensity, Time)
+Breath.df <- Breath %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Breath.df$Time   <- as.factor(Breath.df$Time)
+
+Breath.df$isMale <- as.factor(Breath.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Breath.df, aes(relevel(factor(Breath$Time), "Pre"), Intensity, fill =
+                        Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Breath Intensity') + xlab('Time') +
+  ylim(-2, 93)
+
+```
+
+## Figure S10 B
+```{r}
+# Figure S10 B
+Muscle_All <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS10b.csv")
+p <- ggerrorplot(Muscle_All, x = "Time", y = "Intensity",
+                 color = "Time", facet.by = "Group", ylim = c(10, 40), error.plot = "errorbar",
+                 desc_stat = "mean_se", palette = c("#7E6148B2","#DC0000B2"),ylab="Muscle Intensity", width=0.2, size=1)
+p+stat_compare_means(method = "t.test", paired = TRUE, label.y = 35)+
+  theme(text = element_text(size = 20),legend.position = "none")
+
+
+Muscle_All$Time <- relevel(factor(Muscle_All$Time),"Pre")
+p <- ggerrorplot(Muscle_All, x = "Time", y = "Intensity",
+               color = "Time", facet.by = "Group", ylim = c(0, 50), error.plot = "errorbar",
+               desc_stat = "mean_se", palette = c("#7E6148B2","#DC0000B2"),ylab="Muscle Intensity")
+p+stat_compare_means(method = "t.test", paired = TRUE, label.y = 40)
+Muscle_All_F <-filter(Muscle_All, Sex == "F")
+Muscle_All_F$Time <- relevel(factor(Muscle_All_F$Time),"Pre")
+ggplot(Muscle_All_F, aes(x= Time, y=Intensity, linetype = factor(Group), fill = factor(Time))) +
+  geom_boxplot(aes(fill=Time)) + scale_fill_manual(name ="Time", values = c("#7E6148B2","#DC0000B2")) + 
+  stat_compare_means(aes(group = Group),method = "t.test",
+                     paired = FALSE) +
+  geom_point(position=position_dodge(width=0.75),aes(group=Group))+theme_bw() +
+  theme(text = element_text(size=14))
+
+Muscle <-filter(Muscle_All, Group == "Original")
+
+Muscle <- select(Muscle, ID, Sex, Intensity, Time)
+Muscle.df<- Muscle %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Muscle.df$Time   <-as.factor(Muscle.df$Time)
+
+Muscle.df$isMale <-as.factor(Muscle.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Muscle.df, aes(relevel(factor(Muscle$Time),"Pre"),Intensity, fill=Time))+
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2"))+
+  
+  geom_point(aes(fill=Time,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2")) +theme_bw() + theme(text = element_text(size=9),legend.position = "none") +
+  ylab('Muscle Intensity')+xlab('Time')+
+  ylim(-2, 93)
+
+
+Muscle <-filter(Muscle_All, Sex == "F")
+
+Muscle <- select(Muscle, ID, Sex, Intensity, Time)
+Muscle.df<- Muscle %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Muscle.df$Time   <-as.factor(Muscle.df$Time)
+
+Muscle.df$isMale <-as.factor(Muscle.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Muscle.df, aes(relevel(factor(Muscle$Time),"Pre"),Intensity, fill=Time))+
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2"))+
+  
+  geom_point(aes(fill=Time,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2")) +theme_bw() + theme(text = element_text(size=9),legend.position = "none") +
+  ylab('Muscle Intensity')+xlab('Time')+
+  ylim(-2, 93)
+
+
+Muscle <-filter(Muscle_All, Group == "Replication")
+
+Muscle <- select(Muscle, ID, Sex, Intensity, Time)
+Muscle.df<- Muscle %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Muscle.df$Time   <-as.factor(Muscle.df$Time)
+
+Muscle.df$isMale <-as.factor(Muscle.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Muscle.df, aes(relevel(factor(Muscle$Time),"Pre"),Intensity, fill=Time))+
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2"))+
+  
+  geom_point(aes(fill=Time,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2")) +theme_bw() + theme(text = element_text(size=9),legend.position = "none") +
+  ylab('Muscle Intensity')+xlab('Time')+
+  ylim(-2, 93)
+
+```
+
+## Figure S10C
+```{r}
+# Figure S10C
+HeartBeat_All <- read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS10c.csv")
+p <- ggerrorplot(HeartBeat_All, x = "Time", y = "Intensity",
+                 color = "Time", facet.by = "Group", ylim = c(10, 40), error.plot = "errorbar",
+                 desc_stat = "mean_se", palette = c("#7E6148B2","#DC0000B2"),ylab="HeartBeat Intensity", width=0.2, size=1)
+p+stat_compare_means(method = "t.test", paired = TRUE, label.y = 35)+
+  theme(text = element_text(size = 20),legend.position = "none")
+
+
+HeartBeat_All$Time <- relevel(factor(HeartBeat_All$Time),"Pre")
+p <- ggerrorplot(HeartBeat_All, x = "Time", y = "Intensity",
+               color = "Time", facet.by = "Group", ylim = c(0, 50), error.plot = "errorbar",
+               desc_stat = "mean_se", palette = c("#7E6148B2","#DC0000B2"),ylab="HeartBeat Intensity")
+p+stat_compare_means(method = "t.test", paired = TRUE, label.y = 40)
+HeartBeat_All_F <-filter(HeartBeat_All, Sex == "F")
+HeartBeat_All_F$Time <- relevel(factor(HeartBeat_All_F$Time),"Pre")
+ggplot(HeartBeat_All_F, aes(x= Time, y=Intensity, linetype = factor(Group), fill = factor(Time))) +
+  geom_boxplot(aes(fill=Time)) + scale_fill_manual(name ="Time", values = c("#7E6148B2","#DC0000B2")) + 
+  stat_compare_means(aes(group = Group),method = "t.test",
+                     paired = FALSE) +
+  geom_point(position=position_dodge(width=0.75),aes(group=Group))+theme_bw() +
+  theme(text = element_text(size=14))
+
+HeartBeat <-filter(HeartBeat_All, Group == "Original")
+
+HeartBeat <- select(HeartBeat, ID, Sex, Intensity, Time)
+HeartBeat.df<- HeartBeat %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+HeartBeat.df$Time   <-as.factor(HeartBeat.df$Time)
+
+HeartBeat.df$isMale <-as.factor(HeartBeat.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(HeartBeat.df, aes(relevel(factor(HeartBeat$Time),"Pre"),Intensity, fill=Time))+
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2"))+
+  
+  geom_point(aes(fill=Time,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2")) +theme_bw() + theme(text = element_text(size=9),legend.position = "none") +
+  ylab('HeartBeat Intensity')+xlab('Time')+
+  ylim(-2, 93)
+
+
+HeartBeat <-filter(HeartBeat_All, Sex == "F")
+
+HeartBeat <- select(HeartBeat, ID, Sex, Intensity, Time)
+HeartBeat.df<- HeartBeat %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+HeartBeat.df$Time   <-as.factor(HeartBeat.df$Time)
+
+HeartBeat.df$isMale <-as.factor(HeartBeat.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(HeartBeat.df, aes(relevel(factor(HeartBeat$Time),"Pre"),Intensity, fill=Time))+
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2"))+
+  
+  geom_point(aes(fill=Time,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2")) +theme_bw() + theme(text = element_text(size=9),legend.position = "none") +
+  ylab('HeartBeat Intensity')+xlab('Time')+
+  ylim(-2, 93)
+
+
+HeartBeat <-filter(HeartBeat_All, Group == "Replication")
+
+HeartBeat <- select(HeartBeat, ID, Sex, Intensity, Time)
+HeartBeat.df<- HeartBeat %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex=="M") ) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+HeartBeat.df$Time   <-as.factor(HeartBeat.df$Time)
+
+HeartBeat.df$isMale <-as.factor(HeartBeat.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(HeartBeat.df, aes(relevel(factor(HeartBeat$Time),"Pre"),Intensity, fill=Time))+
+  geom_boxplot(alpha=0.9) +
+  geom_line(aes(group=ID),color= "grey48",size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2"))+
+  
+  geom_point(aes(fill=Time,group=ID),size=1,shape=21, alpha=0.9) +
+  scale_color_manual(values = c('#E64B35B2',"#4DBBD5B2")) +theme_bw() + theme(text = element_text(size=9),legend.position = "none") +
+  ylab('Heartbeat Intensity')+xlab('Time')+
+  ylim(-2, 93)
+
+```
+
+## Figure S10 D
+```{r}
+# Figure S10 D
+Stomach_All <-
+  read.csv("/Users/ahmadmayeli/Documents/Capsule/Data_Capsule/FigS10d.csv")
+p <- ggerrorplot(
+  Stomach_All,
+  x = "Time",
+  y = "Intensity",
+  color = "Time",
+  facet.by = "Group",
+  ylim = c(10, 40),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  palette = c("#7E6148B2", "#DC0000B2"),
+  ylab = "Stomach Intensity",
+  width = 0.2,
+  size = 1
+)
+p + stat_compare_means(method = "t.test",
+                       paired = TRUE,
+                       label.y = 35) +
+  theme(text = element_text(size = 20), legend.position = "none")
+
+
+Stomach_All$Time <- relevel(factor(Stomach_All$Time), "Pre")
+p <- ggerrorplot(
+  Stomach_All,
+  x = "Time",
+  y = "Intensity",
+  color = "Time",
+  facet.by = "Group",
+  ylim = c(0, 50),
+  error.plot = "errorbar",
+  desc_stat = "mean_se",
+  palette = c("#7E6148B2", "#DC0000B2"),
+  ylab = "Stomach Intensity"
+)
+p + stat_compare_means(method = "t.test",
+                       paired = TRUE,
+                       label.y = 40)
+Stomach_All_F <- filter(Stomach_All, Sex == "F")
+Stomach_All_F$Time <- relevel(factor(Stomach_All_F$Time), "Pre")
+ggplot(Stomach_All_F,
+       aes(
+         x = Time,
+         y = Intensity,
+         linetype = factor(Group),
+         fill = factor(Time)
+       )) +
+  geom_boxplot(aes(fill = Time)) + scale_fill_manual(name = "Time", values = c("#7E6148B2", "#DC0000B2")) +
+  stat_compare_means(aes(group = Group), method = "t.test",
+                     paired = FALSE) +
+  geom_point(position = position_dodge(width = 0.75), aes(group = Group)) +
+  theme_bw() +
+  theme(text = element_text(size = 14))
+
+Stomach <- filter(Stomach_All, Group == "Original")
+
+Stomach <- select(Stomach, ID, Sex, Intensity, Time)
+Stomach.df <- Stomach %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Stomach.df$Time   <- as.factor(Stomach.df$Time)
+
+Stomach.df$isMale <- as.factor(Stomach.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Stomach.df, aes(relevel(factor(Stomach$Time), "Pre"), Intensity, fill =
+                         Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Stomach Intensity') + xlab('Time') +
+  ylim(-2, 93)
+
+
+Stomach <- filter(Stomach_All, Sex == "F")
+
+Stomach <- select(Stomach, ID, Sex, Intensity, Time)
+Stomach.df <- Stomach %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Stomach.df$Time   <- as.factor(Stomach.df$Time)
+
+Stomach.df$isMale <- as.factor(Stomach.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Stomach.df, aes(relevel(factor(Stomach$Time), "Pre"), Intensity, fill =
+                         Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Stomach Intensity') + xlab('Time') +
+  ylim(-2, 93)
+
+
+Stomach <- filter(Stomach_All, Group == "Replication")
+
+Stomach <- select(Stomach, ID, Sex, Intensity, Time)
+Stomach.df <- Stomach %>%
+  
+  tidyr::spread(Time, Intensity) %>%
+  
+  dplyr::mutate(isMale = (Sex == "M")) %>%
+  
+  tidyr::gather("Time", "Intensity", 3:4)
+
+Stomach.df$Time   <- as.factor(Stomach.df$Time)
+
+Stomach.df$isMale <- as.factor(Stomach.df$isMale)
+
+mypal = pal_npg("nrc", alpha = 0.9)(12)
+
+
+#ggplot(aes(Time,Intensity_Stomach, fill=Time)) +
+ggplot(Stomach.df, aes(relevel(factor(Stomach$Time), "Pre"), Intensity, fill =
+                         Time)) +
+  geom_boxplot(alpha = 0.9) +
+  geom_line(aes(group = ID), color = "grey48", size = 0.2) +
+  #geom_line(aes(group=ID,color=Sex)) +
+  scale_fill_manual(values = c("#DC0000B2", "#7E6148B2")) +
+  
+  geom_point(
+    aes(fill = Time, group = ID),
+    size = 1,
+    shape = 21,
+    alpha = 0.9
+  ) +
+  scale_color_manual(values = c('#E64B35B2', "#4DBBD5B2")) + theme_bw() + theme(text = element_text(size =
+                                                                                                      9), legend.position = "none") +
+  ylab('Stomach Intensity') + xlab('Time') +
+  ylim(-2, 93)
+
+```
