@@ -34,5 +34,5 @@ For any questions regarding codes in this repo, please contact: <br />
 [Obada Al Zoubi](obada.y.alzoubi@gmail.com)
 
 ## Reference
-- Mayeli, A. \*, Al Zoubi, O. \*, White, E.J. et al. Parieto-occipital ERP indicators of gut mechanosensation in humans. Nat Commun 14, 3398 (2023). https://doi.org/10.1038/s41467-023-39058-4 [* co-first authors]
+- Mayeli, A. \*, Al Zoubi, O. \*, White, E.J. et al. Parieto-occipital ERP indicators of gut mechanosensation in humans. Nat Commun 14, 3398 (2023). https://doi.org/10.1038/s41467-023-39058-4 [\*co-first authors]
 
